@@ -9,7 +9,7 @@ export const ImportService = {
             // Crear un input de archivo oculto
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
-            fileInput.accept = '.csv';
+            fileInput.accept = '.csv, text/csv, text/plain, application/vnd.ms-excel';
             fileInput.style.display = 'none';
             document.body.appendChild(fileInput);
 
