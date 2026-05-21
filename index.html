@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#F4ECD8">
+    <title>Finanzas Personales v2</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inconsolata:wght@200..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+</head>
+<body>
+    <div id="app">
+        <!-- HEADER TOP -->
+        <header class="app-header">
+            <div class="user-info" id="btn-profile-manager">
+                <img src="icon.png" alt="App Icon" class="avatar-img">
+                <div>
+                    <p class="greeting" id="profile-greeting">Cargando... <i class="fas fa-caret-down"></i></p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn-icon" id="import-csv" title="Importar Historial (CSV)"><i class="fas fa-file-import"></i></button>
+                <button class="btn-icon" id="export-csv" title="Exportar Datos (CSV)" style="margin-left: 15px;"><i class="fas fa-file-csv"></i></button>
+            </div>
+        </header>
+
+        <!-- MAIN VIEWS CONTAINER -->
+        <main class="views-container">
+            
+            <!-- ====== VIEW: HOME ====== -->
+            <section id="view-home" class="view active">
+                <!-- Net Worth Panel -->
+                <section class="net-worth-panel">
+                    <div class="nw-header">
+                        <h2>Patrimonio Neto <i class="fas fa-info-circle" title="Activos reales - Pasivos exigibles"></i></h2>
+                        <h1 id="total-net-worth">$0.00</h1>
+                    </div>
+                    <div class="nw-breakdown">
+                        <div class="nw-item">
+                            <span class="nw-label"><i class="fas fa-arrow-trend-up nw-icon-asset"></i> Activos Totales</span>
+                            <span class="nw-value" id="total-assets">$0.00</span>
+                        </div>
+                        <div class="nw-item">
+                            <span class="nw-label"><i class="fas fa-arrow-trend-down nw-icon-liability"></i> Pasivos (Deuda)</span>
+                            <span class="nw-value nw-liability" id="total-liabilities">$0.00</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Accounts Carousel -->
+                <div class="accounts-carousel" id="accounts-carousel"></div>
+
+                <!-- Global Actions -->
+                <section class="quick-actions">
+                    <button class="action-btn" data-action="expense">
+                        <div class="action-icon"><i class="fas fa-arrow-up"></i></div>
+                        <span>Gasto</span>
+                    </button>
+                    <button class="action-btn" data-action="income">
+                        <div class="action-icon"><i class="fas fa-arrow-down"></i></div>
+                        <span>Ingreso</span>
+                    </button>
+                    <button class="action-btn" data-action="transfer">
+                        <div class="action-icon"><i class="fas fa-exchange-alt"></i></div>
+                        <span>Transferir</span>
+                    </button>
+                </section>
+
+                <!-- Status / Recent -->
+                <section class="section-block">
+                    <div class="section-header">
+                        <h3>Historial de Movimientos</h3>
+                        <span class="see-all">Ver todo</span>
+                    </div>
+                    <div id="transactions-list" class="transactions-list"></div>
+                </section>
+
+                <section class="section-block">
+                    <div class="section-header">
+                        <h3>Metas de Ahorro (Futuros)</h3>
+                    </div>
+                    <div id="savings-list" class="savings-list"></div>
+                </section>
+            </section>
+
+            <!-- ====== VIEW: ANALYTICS ====== -->
+            <section id="view-analytics" class="view hidden">
+                <div class="section-header">
+                    <h3>Estadísticas</h3>
+                    <select class="filter-select" id="analytics-time-filter">
+                        <option value="all">Historial Completo</option>
+                        <option value="week">Últimos 7 Días</option>
+                        <option value="month" selected>Últimos 30 Días</option>
+                        <option value="3months">Últimos 90 Días</option>
+                        <option value="year">Último Año</option>
+                    </select>
+                </div>
+                <div id="expenses-chart-card-container" style="position: relative; margin-top: 20px;">
+                    <h3 style="margin-bottom: 15px;">Distribución de Gastos</h3>
+                    <div class="settings-card" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between;">
+                        <div style="width: 100%; max-width: 220px; height: 220px; position: relative; margin: 0 auto;">
+                            <canvas id="expenses-chart"></canvas>
+                        </div>
+                        <div id="expenses-chart-legend" style="flex: 1; min-width: 200px; font-family: 'Inconsolata'; font-size: 0.95rem; line-height: 1.5;">
+                            <!-- Inyectado por JS -->
+                        </div>
+                    </div>
+                    <div id="expenses-detail-widget" style="margin-top: 15px; transition: all 0.3s ease;">
+                        <!-- Inyectado por JS al hacer clic -->
+                    </div>
+                </div>
+                <div id="net-worth-chart-container" style="position: relative; height:300px; width:100%; margin-top: 40px;">
+                    <h3>Evolución de Patrimonio</h3>
+                    <canvas id="net-worth-history-chart"></canvas>
+                </div>
+                
+                <div id="zbb-rule-chart-container" style="position: relative; margin-top: 50px; margin-bottom: 50px;">
+                    <h3 style="margin-bottom: 15px;">Análisis de Regla 50/30/20 (Real)</h3>
+                    <div class="settings-card" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between;">
+                        <div style="width: 100%; max-width: 220px; height: 220px; position: relative; margin: 0 auto;">
+                            <canvas id="zbb-rule-chart"></canvas>
+                        </div>
+                        <div id="zbb-rule-legend" style="flex: 1; min-width: 200px; font-family: 'Inconsolata'; font-size: 0.95rem; line-height: 1.5;">
+                            <!-- Inyectado por JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ====== VIEW: ZBB ====== -->
+            <section id="view-zbb" class="view hidden">
+                <div class="section-header">
+                    <h3>Presupuesto ZBB</h3>
+                </div>
+
+                <!-- Ingreso Total -->
+                <section class="net-worth-panel" style="margin-bottom: 20px;">
+                    <div class="nw-header" style="border-bottom: none;">
+                        <h2 style="font-size: 1.1rem;">Ingreso a Presupuestar</h2>
+                        <input type="number" id="zbb-income-input" class="filter-select" style="font-size: 1.5rem; width: 100%; text-align: right;" placeholder="0.00">
+                    </div>
+                </section>
+                
+                <!-- Delta Widget -->
+                <div id="zbb-delta-container" class="stat-card" style="margin-bottom: 20px; background: var(--bg-secondary);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Remanente por asignar:</span>
+                        <h2 id="zbb-delta-value" style="margin: 0;">$0.00</h2>
+                    </div>
+                </div>
+
+                <!-- Categorías -->
+                <div id="zbb-categories-list" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Inyectado por JS -->
+                </div>
+
+                <button id="zbb-save-btn" class="btn btn-save" style="margin-top: 20px; width: 100%;">Guardar Plan de Presupuesto</button>
+            </section>
+            
+            <!-- ====== VIEW: SETTINGS ====== -->
+            <section id="view-settings" class="view hidden">
+                <div class="section-header">
+                    <h3>Configuración</h3>
+                </div>
+                <div class="settings-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4>Cuentas</h4>
+                        <button class="btn-icon" id="add-account-btn"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="settings-accounts"></div>
+                </div>
+                <div class="settings-card" style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4>Categorías</h4>
+                        <button class="btn-icon" id="add-category-btn"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="settings-categories"></div>
+                </div>
+
+                <div class="settings-card" style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4>Metas Económicas</h4>
+                        <button class="btn-icon" id="add-goal-btn"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="settings-goals"></div>
+                </div>
+
+                <div class="settings-card" style="margin-top: 20px;">
+                    <h4>Tipos de Cambio</h4>
+                    <div id="settings-exchange-rates"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- BOTTOM NAVIGATION -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-target="view-home"><i class="fas fa-wallet"></i></button>
+            <button class="nav-item" data-target="view-analytics"><i class="fas fa-chart-pie"></i></button>
+            <button class="nav-item" data-target="view-zbb"><i class="fas fa-balance-scale"></i></button>
+            <button class="nav-item" data-target="view-settings"><i class="fas fa-cog"></i></button>
+        </nav>
+
+        <!-- Account Modal -->
+        <div id="account-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="acc-modal-title">Cuenta</h2>
+                    <button id="close-acc-modal" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="account-form">
+                    <input type="hidden" id="acc-id">
+                    <div class="input-group">
+                        <label for="acc-name">Nombre</label>
+                        <input type="text" id="acc-name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="acc-currency">Moneda</label>
+                        <select id="acc-currency">
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="COP">COP</option>
+                            <option value="RUB">RUB</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="acc-type">Tipo</label>
+                        <select id="acc-type">
+                            <option value="asset">Activo</option>
+                            <option value="liability">Pasivo</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="acc-balance">Balance Inicial</label>
+                        <input type="number" id="acc-balance" step="any" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Color de Tarjeta</label>
+                        <input type="hidden" id="acc-color" value="#DFB574">
+                        <div class="color-selector" id="acc-color-selector">
+                            <div class="color-swatch" style="background-color: #A5BCA6;" data-color="#A5BCA6"></div>
+                            <div class="color-swatch" style="background-color: #D9A098;" data-color="#D9A098"></div>
+                            <div class="color-swatch selected" style="background-color: #DFB574;" data-color="#DFB574"></div>
+                            <div class="color-swatch" style="background-color: #98B1C4;" data-color="#98B1C4"></div>
+                            <div class="color-swatch" style="background-color: #B3A4B5;" data-color="#B3A4B5"></div>
+                            <div class="color-swatch" style="background-color: #8C9970;" data-color="#8C9970"></div>
+                            <div class="color-swatch" style="background-color: #6B8E9B;" data-color="#6B8E9B"></div>
+                            <div class="color-swatch" style="background-color: #DF8D74;" data-color="#DF8D74"></div>
+                            <div class="color-swatch" style="background-color: #E2CA64;" data-color="#E2CA64"></div>
+                            <div class="color-swatch" style="background-color: #96CDA2;" data-color="#96CDA2"></div>
+                            <div class="color-swatch" style="background-color: #C3B1E1;" data-color="#C3B1E1"></div>
+                            <div class="color-swatch" style="background-color: #E6A8D7;" data-color="#E6A8D7"></div>
+                            <div class="color-swatch" style="background-color: #8F8FBD;" data-color="#8F8FBD"></div>
+                            <div class="color-swatch" style="background-color: #DDA7A5;" data-color="#DDA7A5"></div>
+                            <div class="color-swatch" style="background-color: #E2D1B9;" data-color="#E2D1B9"></div>
+                            <div class="color-swatch" style="background-color: #F1C232;" data-color="#F1C232"></div>
+                            <div class="color-swatch" style="background-color: #A4C2F4;" data-color="#A4C2F4"></div>
+                            <div class="color-swatch" style="background-color: #B7E1CD;" data-color="#B7E1CD"></div>
+                            <div class="color-swatch" style="background-color: #F4CCCC;" data-color="#F4CCCC"></div>
+                            <div class="color-swatch" style="background-color: #2B2B2B;" data-color="#2B2B2B"></div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-save">Guardar Cuenta</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Category Modal -->
+        <div id="category-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="cat-modal-title">Categoría</h2>
+                    <button id="close-cat-modal" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="category-form">
+                    <input type="hidden" id="cat-id">
+                    <div class="input-group">
+                        <label for="cat-name">Nombre</label>
+                        <input type="text" id="cat-name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="cat-type">Tipo</label>
+                        <select id="cat-type">
+                            <option value="expense">Gasto</option>
+                            <option value="income">Ingreso</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Icono</label>
+                        <input type="hidden" id="cat-icon" value="fa-tag">
+                        <div class="icon-selector" id="cat-icon-selector">
+                            <i class="fa-solid fa-tag selected" data-icon="fa-tag"></i>
+                            <i class="fa-solid fa-basket-shopping" data-icon="fa-basket-shopping"></i>
+                            <i class="fa-solid fa-utensils" data-icon="fa-utensils"></i>
+                            <i class="fa-solid fa-car" data-icon="fa-car"></i>
+                            <i class="fa-solid fa-house" data-icon="fa-house"></i>
+                            <i class="fa-solid fa-briefcase" data-icon="fa-briefcase"></i>
+                            <i class="fa-solid fa-heart-pulse" data-icon="fa-heart-pulse"></i>
+                            <i class="fa-solid fa-gamepad" data-icon="fa-gamepad"></i>
+                            <i class="fa-solid fa-film" data-icon="fa-film"></i>
+                            <i class="fa-solid fa-book" data-icon="fa-book"></i>
+                            <i class="fa-solid fa-mug-hot" data-icon="fa-mug-hot"></i>
+                            <i class="fa-solid fa-piggy-bank" data-icon="fa-piggy-bank"></i>
+                            <i class="fa-solid fa-plane" data-icon="fa-plane"></i>
+                            <i class="fa-solid fa-paw" data-icon="fa-paw"></i>
+                            <i class="fa-solid fa-gift" data-icon="fa-gift"></i>
+                            <i class="fa-solid fa-shirt" data-icon="fa-shirt"></i>
+                            <i class="fa-solid fa-bolt" data-icon="fa-bolt"></i>
+                            <i class="fa-solid fa-tv" data-icon="fa-tv"></i>
+                            <i class="fa-solid fa-dumbbell" data-icon="fa-dumbbell"></i>
+                            <i class="fa-solid fa-mobile-screen-button" data-icon="fa-mobile-screen-button"></i>
+                            <i class="fa-solid fa-wrench" data-icon="fa-wrench"></i>
+                            <i class="fa-solid fa-gas-pump" data-icon="fa-gas-pump"></i>
+                            <i class="fa-solid fa-pills" data-icon="fa-pills"></i>
+                            <i class="fa-solid fa-money-bill-wave" data-icon="fa-money-bill-wave"></i>
+                            <i class="fa-solid fa-graduation-cap" data-icon="fa-graduation-cap"></i>
+                            <i class="fa-solid fa-glass-water" data-icon="fa-glass-water"></i>
+                            <i class="fa-solid fa-hand-holding-dollar" data-icon="fa-hand-holding-dollar"></i>
+                            <i class="fa-solid fa-scissors" data-icon="fa-scissors"></i>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Color</label>
+                        <input type="hidden" id="cat-color" value="#ccc">
+                        <div class="color-selector" id="cat-color-selector">
+                            <div class="color-swatch" style="background-color: #A5BCA6;" data-color="#A5BCA6"></div>
+                            <div class="color-swatch" style="background-color: #D9A098;" data-color="#D9A098"></div>
+                            <div class="color-swatch" style="background-color: #DFB574;" data-color="#DFB574"></div>
+                            <div class="color-swatch" style="background-color: #98B1C4;" data-color="#98B1C4"></div>
+                            <div class="color-swatch" style="background-color: #B3A4B5;" data-color="#B3A4B5"></div>
+                            <div class="color-swatch" style="background-color: #8C9970;" data-color="#8C9970"></div>
+                            <div class="color-swatch selected" style="background-color: #6B8E9B;" data-color="#6B8E9B"></div>
+                            <div class="color-swatch" style="background-color: #DF8D74;" data-color="#DF8D74"></div>
+                            <div class="color-swatch" style="background-color: #E2CA64;" data-color="#E2CA64"></div>
+                            <div class="color-swatch" style="background-color: #96CDA2;" data-color="#96CDA2"></div>
+                            <div class="color-swatch" style="background-color: #C3B1E1;" data-color="#C3B1E1"></div>
+                            <div class="color-swatch" style="background-color: #E6A8D7;" data-color="#E6A8D7"></div>
+                            <div class="color-swatch" style="background-color: #8F8FBD;" data-color="#8F8FBD"></div>
+                            <div class="color-swatch" style="background-color: #DDA7A5;" data-color="#DDA7A5"></div>
+                            <div class="color-swatch" style="background-color: #E2D1B9;" data-color="#E2D1B9"></div>
+                            <div class="color-swatch" style="background-color: #F1C232;" data-color="#F1C232"></div>
+                            <div class="color-swatch" style="background-color: #A4C2F4;" data-color="#A4C2F4"></div>
+                            <div class="color-swatch" style="background-color: #B7E1CD;" data-color="#B7E1CD"></div>
+                            <div class="color-swatch" style="background-color: #F4CCCC;" data-color="#F4CCCC"></div>
+                            <div class="color-swatch" style="background-color: #2B2B2B;" data-color="#2B2B2B"></div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-save">Guardar Categoría</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Fund Goal Modal -->
+        <div id="fund-goal-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Fondear Meta</h2>
+                    <button id="close-fund-modal" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="fund-goal-form">
+                    <input type="hidden" id="fund-goal-id">
+                    <div class="input-group">
+                        <label for="fund-amount">Monto a sumar</label>
+                        <input type="number" id="fund-amount" step="any" required>
+                    </div>
+                    <button type="submit" class="btn btn-save">Añadir Fondos</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Goal Modal -->
+        <div id="goal-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="goal-modal-title">Meta de Ahorro</h2>
+                    <button id="close-goal-modal" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="goal-form">
+                    <input type="hidden" id="goal-id">
+                    <div class="input-group">
+                        <label for="goal-name">Nombre de la Meta</label>
+                        <input type="text" id="goal-name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="goal-target">Monto Objetivo</label>
+                        <input type="number" id="goal-target" step="any" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="goal-account">Vincular a Cuenta (Opcional)</label>
+                        <select id="goal-account">
+                            <option value="">Ninguna (Fondo Independiente)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="goal-icon">Icono (FA)</label>
+                        <input type="text" id="goal-icon" value="fa-bullseye">
+                    </div>
+                    <button type="submit" class="btn btn-save">Guardar Meta</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Transaction Modal -->
+        <div id="transaction-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Nueva Transacción</h2>
+                    <button id="close-modal" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="transaction-form">
+                    <input type="hidden" id="tx-id">
+                    <div class="input-group">
+                        <label for="tx-date">Fecha</label>
+                        <input type="date" id="tx-date" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="tx-account">Cuenta</label>
+                        <select id="tx-account" required></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="tx-amount">Monto</label>
+                        <input type="number" id="tx-amount" inputmode="decimal" step="any" placeholder="0.00" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="tx-category">Categoría</label>
+                        <select id="tx-category" required></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="tx-notes">Notas (Opcional)</label>
+                        <textarea id="tx-notes" placeholder="Descripción..." rows="2"></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="button" class="btn btn-danger hidden" id="tx-delete-btn" style="flex: 1; margin: 0; background-color: var(--action-expense); color: var(--bg-primary); border-radius: 12px 2px 10px 4px; padding: 15px; font-family: var(--font-heading); font-size: 1.3rem; letter-spacing: 1px; font-weight: 700; cursor: pointer; border: 2px solid var(--text-primary); transition: transform 0.1s;">Eliminar</button>
+                        <button type="submit" class="btn btn-save" id="tx-save-btn" style="flex: 1.5; margin: 0;">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Transfer Modal -->
+        <div id="transfer-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="transfer-modal-title">Transferencia</h2>
+                    <button id="close-transfer-modal" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="transfer-form">
+                    <input type="hidden" id="trans-id">
+                    <div class="input-group">
+                        <label for="trans-date">Fecha</label>
+                        <input type="date" id="trans-date" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="trans-from">De (Origen)</label>
+                        <select id="trans-from" required></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="trans-to">A (Destino)</label>
+                        <select id="trans-to" required></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="trans-amount">Monto enviado</label>
+                        <input type="number" id="trans-amount" inputmode="decimal" step="any" placeholder="0.00" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="trans-fee" style="display:flex; align-items:center; gap:6px;">
+                            Comisión / Impuesto
+                            <span style="font-size:0.75rem; font-weight:normal; color:var(--text-secondary); font-style:italic;">(opcional — se descuenta del origen)</span>
+                        </label>
+                        <input type="number" id="trans-fee" inputmode="decimal" step="any" placeholder="0.00" min="0" value="0">
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="button" class="btn btn-danger hidden" id="trans-delete-btn" style="flex: 1; margin: 0; background-color: var(--action-expense); color: var(--bg-primary); border-radius: 12px 2px 10px 4px; padding: 15px; font-family: var(--font-heading); font-size: 1.3rem; letter-spacing: 1px; font-weight: 700; cursor: pointer; border: 2px solid var(--text-primary); transition: transform 0.1s;">Eliminar</button>
+                        <button type="submit" class="btn btn-save" id="trans-save-btn" style="flex: 1.5; margin: 0;">Realizar Transferencia</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ====== MODALES DE PERFILES ====== -->
+        <!-- Profile Manager Modal -->
+        <div id="profile-manager-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Gestor de Perfiles</h2>
+                    <button id="close-profile-manager" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 15px;">Selecciona un perfil para administrar sus cuentas, categorías e historial de manera independiente.</p>
+                <div id="profiles-list" class="transactions-list" style="margin-bottom: 20px; max-height: 300px; overflow-y: auto;">
+                    <!-- Inyectado dinámicamente -->
+                </div>
+                <button class="btn btn-secondary" id="btn-create-profile" style="width: 100%; border: 2px dashed var(--text-secondary);"><i class="fas fa-plus"></i> Crear Nuevo Espacio</button>
+            </div>
+        </div>
+
+        <!-- Profile Edit Modal -->
+        <div id="profile-edit-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title-profile">Nuevo Perfil</h2>
+                    <button id="close-profile-edit" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="profile-edit-form">
+                    <input type="hidden" id="profile-edit-id">
+                    <div class="input-group">
+                        <label for="profile-name">Nombre del Espacio</label>
+                        <input type="text" id="profile-name" placeholder="Ej. Personal, Negocio, Viaje" required>
+                    </div>
+                    <div class="input-group" style="display: flex; flex-direction:column; gap: 15px;">
+                        <div>
+                            <label>Color Temático</label>
+                            <input type="hidden" id="profile-color" value="#8C9970">
+                            <div class="color-selector" id="profile-color-selector">
+                                <div class="color-swatch" style="background-color: #A5BCA6;" data-color="#A5BCA6"></div>
+                                <div class="color-swatch" style="background-color: #D9A098;" data-color="#D9A098"></div>
+                                <div class="color-swatch" style="background-color: #DFB574;" data-color="#DFB574"></div>
+                                <div class="color-swatch" style="background-color: #98B1C4;" data-color="#98B1C4"></div>
+                                <div class="color-swatch" style="background-color: #B3A4B5;" data-color="#B3A4B5"></div>
+                                <div class="color-swatch selected" style="background-color: #8C9970;" data-color="#8C9970"></div>
+                                <div class="color-swatch" style="background-color: #6B8E9B;" data-color="#6B8E9B"></div>
+                                <div class="color-swatch" style="background-color: #DF8D74;" data-color="#DF8D74"></div>
+                                <div class="color-swatch" style="background-color: #E2CA64;" data-color="#E2CA64"></div>
+                                <div class="color-swatch" style="background-color: #96CDA2;" data-color="#96CDA2"></div>
+                                <div class="color-swatch" style="background-color: #C3B1E1;" data-color="#C3B1E1"></div>
+                                <div class="color-swatch" style="background-color: #E6A8D7;" data-color="#E6A8D7"></div>
+                                <div class="color-swatch" style="background-color: #8F8FBD;" data-color="#8F8FBD"></div>
+                                <div class="color-swatch" style="background-color: #DDA7A5;" data-color="#DDA7A5"></div>
+                                <div class="color-swatch" style="background-color: #E2D1B9;" data-color="#E2D1B9"></div>
+                                <div class="color-swatch" style="background-color: #F1C232;" data-color="#F1C232"></div>
+                                <div class="color-swatch" style="background-color: #A4C2F4;" data-color="#A4C2F4"></div>
+                                <div class="color-swatch" style="background-color: #B7E1CD;" data-color="#B7E1CD"></div>
+                                <div class="color-swatch" style="background-color: #F4CCCC;" data-color="#F4CCCC"></div>
+                                <div class="color-swatch" style="background-color: #2B2B2B;" data-color="#2B2B2B"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label>Icono del Espacio</label>
+                            <input type="hidden" id="profile-icon" value="fa-user">
+                            <div class="icon-selector" id="profile-icon-selector" style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 1.2rem; margin-top: 5px;">
+                                <i class="fas fa-user selected" data-icon="fa-user" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-building" data-icon="fa-building" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-briefcase" data-icon="fa-briefcase" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-plane" data-icon="fa-plane" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-home" data-icon="fa-home" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-car" data-icon="fa-car" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-graduation-cap" data-icon="fa-graduation-cap" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-heartbeat" data-icon="fa-heartbeat" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-piggy-bank" data-icon="fa-piggy-bank" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-store" data-icon="fa-store" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-globe" data-icon="fa-globe" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-users" data-icon="fa-users" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-chart-line" data-icon="fa-chart-line" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-rocket" data-icon="fa-rocket" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-gem" data-icon="fa-gem" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-coffee" data-icon="fa-coffee" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-gamepad" data-icon="fa-gamepad" style="cursor: pointer; padding: 5px;"></i>
+                                <i class="fas fa-shopping-cart" data-icon="fa-shopping-cart" style="cursor: pointer; padding: 5px;"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-save" id="profile-save-btn">Guardar Perfil</button>
+                    <button type="button" class="btn btn-secondary hidden mt-10" id="profile-delete-btn" style="border-color: var(--action-expense); color: var(--action-expense); margin-top: 10px;">Eliminar Perfil</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modulo Principal -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
