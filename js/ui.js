@@ -837,7 +837,7 @@ export const UI = {
                                     ${parseFloat(tx.fee || 0) > 0 && isOutgoing ? `<span style="font-size:0.75rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
                                 </div>
                             </div>
-                            <div style="text-align: right; line-height: 1.2;">
+                            <div style="text-align: right; line-height: 1.2; flex-shrink: 0; margin-left: 10px;">
                                 ${isOutgoing 
                                     ? `<span class="amount-expense" style="font-size: 0.95rem; font-weight: 700;">-${parseFloat(tx.amount_extracted || 0).toFixed(2)} ${fromAcc.currency}</span>`
                                     : `<span class="amount-income" style="font-size: 0.95rem; font-weight: 700;">+${parseFloat(tx.amount_received || 0).toFixed(2)} ${toAcc.currency}</span>`

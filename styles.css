@@ -205,6 +205,8 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex: 1;
+    min-width: 0;
 }
 .t-icon {
     width: 42px;
@@ -223,23 +225,34 @@ body {
     display: flex;
     flex-direction: column;
     line-height: 1.25;
+    flex: 1;
+    min-width: 0;
 }
 .t-name {
     font-family: var(--font-heading);
     font-weight: 700;
     font-size: 1.2rem;
     color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .t-date {
     font-size: 0.8rem;
     color: var(--text-secondary);
     font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .t-amount {
     font-family: var(--font-heading);
     font-size: 1.45rem;
     font-weight: 700;
     letter-spacing: -0.5px;
+    flex-shrink: 0;
+    margin-left: 10px;
+    text-align: right;
 }
 .amount-expense { color: var(--action-expense); }
 .amount-income { color: var(--action-income); }
@@ -340,3 +353,34 @@ body {
 .zbb-cat-input:focus { box-shadow: 3px 3px 0px var(--text-primary); }
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 @keyframes shake { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 5px)); } 75% { transform: translateX(calc(-50% + 5px)); } }
+
+/* Ajustes de responsividad para Modales y Filtros en Celulares */
+.modal-filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+@media (max-width: 480px) {
+    .modal {
+        padding: 10px 8px;
+    }
+    .modal-content {
+        padding: 20px 15px;
+        box-shadow: 4px 4px 0px 0px var(--bg-primary);
+    }
+    .modal-filters-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    #acc-history-info-card {
+        padding: 10px !important;
+        margin-bottom: 15px !important;
+    }
+    #acc-history-card-balance {
+        font-size: 1.4rem !important;
+    }
+    #acc-history-card-name {
+        font-size: 1.1rem !important;
+    }
+}

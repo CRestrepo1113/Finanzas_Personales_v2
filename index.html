@@ -583,15 +583,15 @@
                 
                 <!-- Account Summary Info Card -->
                 <div id="acc-history-info-card" style="border: 3px solid var(--text-primary); background-color: var(--bg-secondary); padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 4px 4px 0px var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <span id="acc-history-card-name" style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 700; color: var(--text-primary); display: block;">Nombre Cuenta</span>
+                    <div style="flex: 1; min-width: 0;">
+                        <span id="acc-history-card-name" style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 700; color: var(--text-primary); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Nombre Cuenta</span>
                         <span id="acc-history-card-currency" class="ac-currency" style="margin-top: 4px; display: inline-block;">USD</span>
                     </div>
-                    <div id="acc-history-card-balance" style="font-family: var(--font-heading); font-size: 1.8rem; font-weight: 900; color: var(--text-primary);">$0.00</div>
+                    <div id="acc-history-card-balance" style="font-family: var(--font-heading); font-size: 1.8rem; font-weight: 900; color: var(--text-primary); flex-shrink: 0; margin-left: 10px; text-align: right;">$0.00</div>
                 </div>
 
                 <!-- Filters -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div class="modal-filters-grid" style="margin-bottom: 20px;">
                     <div class="input-group" style="margin-bottom: 0;">
                         <label for="acc-history-time-filter" style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">Período</label>
                         <select id="acc-history-time-filter" class="filter-select" style="width: 100%; padding: 10px; border: 2px solid var(--text-primary); border-radius: 6px; background-color: var(--bg-card); font-family: var(--font-body); font-weight: 700; cursor: pointer; box-shadow: 2px 2px 0px var(--text-primary);">
