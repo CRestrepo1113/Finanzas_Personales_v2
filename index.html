@@ -570,6 +570,55 @@
                 </form>
             </div>
         </div>
+
+        <!-- Account History Modal -->
+        <div id="account-history-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 550px;">
+                <div class="modal-header">
+                    <h2 id="modal-title-acc-history" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-wallet"></i> Historial de Cuenta
+                    </h2>
+                    <button id="close-account-history" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <!-- Account Summary Info Card -->
+                <div id="acc-history-info-card" style="border: 3px solid var(--text-primary); background-color: var(--bg-secondary); padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 4px 4px 0px var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span id="acc-history-card-name" style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 700; color: var(--text-primary); display: block;">Nombre Cuenta</span>
+                        <span id="acc-history-card-currency" class="ac-currency" style="margin-top: 4px; display: inline-block;">USD</span>
+                    </div>
+                    <div id="acc-history-card-balance" style="font-family: var(--font-heading); font-size: 1.8rem; font-weight: 900; color: var(--text-primary);">$0.00</div>
+                </div>
+
+                <!-- Filters -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label for="acc-history-time-filter" style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">Período</label>
+                        <select id="acc-history-time-filter" class="filter-select" style="width: 100%; padding: 10px; border: 2px solid var(--text-primary); border-radius: 6px; background-color: var(--bg-card); font-family: var(--font-body); font-weight: 700; cursor: pointer; box-shadow: 2px 2px 0px var(--text-primary);">
+                            <option value="all">Todo el tiempo</option>
+                            <option value="week">Últimos 7 días</option>
+                            <option value="month">Últimos 30 días</option>
+                            <option value="3months">Últimos 90 días</option>
+                            <option value="year">Último año</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label for="acc-history-type-filter" style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: block;">Tipo Movimiento</label>
+                        <select id="acc-history-type-filter" class="filter-select" style="width: 100%; padding: 10px; border: 2px solid var(--text-primary); border-radius: 6px; background-color: var(--bg-card); font-family: var(--font-body); font-weight: 700; cursor: pointer; box-shadow: 2px 2px 0px var(--text-primary);">
+                            <option value="all">Todos los movimientos</option>
+                            <option value="income">Ingresos</option>
+                            <option value="expense">Gastos</option>
+                            <option value="transfer">Transferencias</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Transaction List -->
+                <div id="account-history-list" class="transactions-list" style="max-height: 350px; overflow-y: auto; border: 2px solid var(--text-primary); padding: 10px; border-radius: 8px; background-color: var(--bg-card); box-shadow: inset 2px 2px 4px rgba(0,0,0,0.05);">
+                    <!-- Inyectado dinámicamente -->
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Modulo Principal -->

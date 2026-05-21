@@ -48,7 +48,8 @@ export const FormService = {
             'close-goal-modal': 'goal-modal',
             'close-fund-modal': 'fund-goal-modal',
             'close-profile-manager': 'profile-manager-modal',
-            'close-profile-edit': 'profile-edit-modal'
+            'close-profile-edit': 'profile-edit-modal',
+            'close-account-history': 'account-history-modal'
         };
 
         Object.entries(closeBtns).forEach(([btnId, modalId]) => {

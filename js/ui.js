@@ -83,6 +83,7 @@ function isDarkColor(hex) {
 
 export const UI = {
     showAllTransactions: false,
+    currentHistoryAccountId: null,
     elements: {
         totalNetWorth: document.getElementById('total-net-worth'),
         totalAssets: document.getElementById('total-assets'),
@@ -115,6 +116,19 @@ export const UI = {
         this.renderExchangeRates();
         this.renderSavings();
         this.renderCategories();
+
+        // Refrescar el historial del modal de la cuenta si está abierto
+        const modal = document.getElementById('account-history-modal');
+        if (modal && !modal.classList.contains('hidden') && this.currentHistoryAccountId) {
+            this.renderAccountHistoryTransactions();
+            const acc = State.db.accounts.find(a => String(a.id) === String(this.currentHistoryAccountId));
+            if (acc) {
+                const cardBalanceEl = document.getElementById('acc-history-card-balance');
+                if (cardBalanceEl) {
+                    cardBalanceEl.textContent = `$${acc.balance.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+                }
+            }
+        }
     },
 
     renderGreeting() {
@@ -161,7 +175,7 @@ export const UI = {
             this.elements.accountsCarousel.innerHTML = accounts.map(acc => {
                 const isDark = isDarkColor(acc.color);
                 return `
-                    <div class="account-card ${isDark ? 'is-dark' : ''}" style="background: ${acc.color || 'var(--accent-gold)'}">
+                    <div class="account-card ${isDark ? 'is-dark' : ''} account-card-trigger" data-id="${acc.id}" style="background: ${acc.color || 'var(--accent-gold)'}; cursor: pointer;">
                         <div class="ac-bg-lines"><i class="fa-solid fa-wallet"></i></div>
                         <div class="acc-info">
                             <span class="acc-name">${acc.name}</span>
@@ -171,6 +185,14 @@ export const UI = {
                     </div>
                 `;
             }).join('');
+
+            // Adjuntar event listeners para abrir el historial de la cuenta al hacer clic
+            this.elements.accountsCarousel.querySelectorAll('.account-card-trigger').forEach(card => {
+                card.onclick = () => {
+                    const accId = card.dataset.id;
+                    this.openAccountHistoryModal(accId);
+                };
+            });
         }
 
         // 2. Renderizar Lista en Configuración
@@ -615,6 +637,261 @@ export const UI = {
                     }
                 });
             }
+        });
+    },
+
+    openAccountHistoryModal(accId) {
+        this.currentHistoryAccountId = accId;
+        const acc = State.db.accounts.find(a => String(a.id) === String(accId));
+        if (!acc) return;
+
+        // Inyectar info
+        const cardNameEl = document.getElementById('acc-history-card-name');
+        const cardCurrencyEl = document.getElementById('acc-history-card-currency');
+        const cardBalanceEl = document.getElementById('acc-history-card-balance');
+        const infoCardEl = document.getElementById('acc-history-info-card');
+
+        if (cardNameEl) cardNameEl.textContent = acc.name;
+        if (cardCurrencyEl) cardCurrencyEl.textContent = acc.currency;
+        if (cardBalanceEl) {
+            cardBalanceEl.textContent = `$${acc.balance.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+        }
+        if (infoCardEl) {
+            infoCardEl.style.backgroundColor = acc.color || 'var(--bg-secondary)';
+            // Ajustar el color del texto según la luminosidad del color de la tarjeta
+            const isDark = isDarkColor(acc.color);
+            if (isDark) {
+                cardNameEl.style.color = '#FFF';
+                cardCurrencyEl.style.color = '#FFF';
+                cardBalanceEl.style.color = '#FFF';
+                cardCurrencyEl.style.borderColor = '#FFF';
+                cardCurrencyEl.style.backgroundColor = 'rgba(255,255,255,0.15)';
+            } else {
+                cardNameEl.style.color = 'var(--text-primary)';
+                cardCurrencyEl.style.color = 'var(--text-primary)';
+                cardBalanceEl.style.color = 'var(--text-primary)';
+                cardCurrencyEl.style.borderColor = 'var(--text-primary)';
+                cardCurrencyEl.style.backgroundColor = 'rgba(0,0,0,0.05)';
+            }
+        }
+
+        // Resetear selectores a "all"
+        const timeFilter = document.getElementById('acc-history-time-filter');
+        const typeFilter = document.getElementById('acc-history-type-filter');
+        if (timeFilter) timeFilter.value = 'all';
+        if (typeFilter) typeFilter.value = 'all';
+
+        // Vincular change events
+        if (timeFilter) {
+            timeFilter.onchange = () => this.renderAccountHistoryTransactions();
+        }
+        if (typeFilter) {
+            typeFilter.onchange = () => this.renderAccountHistoryTransactions();
+        }
+
+        const modal = document.getElementById('account-history-modal');
+        if (modal) modal.classList.remove('hidden');
+
+        this.renderAccountHistoryTransactions();
+    },
+
+    renderAccountHistoryTransactions() {
+        const accId = this.currentHistoryAccountId;
+        if (!accId) return;
+
+        const listContainer = document.getElementById('account-history-list');
+        if (!listContainer) return;
+
+        const { transactions, categories, accounts } = State.db;
+        const acc = accounts.find(a => String(a.id) === String(accId));
+        if (!acc) return;
+
+        // 1. Filtrar por cuenta (transacciones directas y transferencias de entrada/salida)
+        let filteredTx = transactions.filter(tx => {
+            if (tx.type === 'transfer') {
+                return String(tx.from_account_id) === String(accId) || String(tx.to_account_id) === String(accId);
+            }
+            return String(tx.account_id) === String(accId);
+        });
+
+        // 2. Filtrar por rango temporal
+        const timeFilter = document.getElementById('acc-history-time-filter')?.value || 'all';
+        const now = new Date();
+        let cutoffDate = null;
+
+        if (timeFilter === 'week') {
+            cutoffDate = new Date(); cutoffDate.setDate(now.getDate() - 7);
+        } else if (timeFilter === 'month') {
+            cutoffDate = new Date(); cutoffDate.setDate(now.getDate() - 30);
+        } else if (timeFilter === '3months') {
+            cutoffDate = new Date(); cutoffDate.setDate(now.getDate() - 90);
+        } else if (timeFilter === 'year') {
+            cutoffDate = new Date(); cutoffDate.setFullYear(now.getFullYear() - 1);
+        }
+
+        if (cutoffDate) {
+            cutoffDate.setHours(0, 0, 0, 0);
+            filteredTx = filteredTx.filter(tx => {
+                const comp = getLocalDateComponents(tx.date);
+                if (!comp) return false;
+                const txDate = new Date(comp.year, comp.month, comp.day);
+                return txDate >= cutoffDate;
+            });
+        }
+
+        // 3. Filtrar por tipo de movimiento
+        const typeFilter = document.getElementById('acc-history-type-filter')?.value || 'all';
+        if (typeFilter !== 'all') {
+            filteredTx = filteredTx.filter(tx => {
+                if (typeFilter === 'transfer') {
+                    return tx.type === 'transfer';
+                }
+                
+                // Si es una transferencia, no clasifica como ingreso/gasto estándar de la cuenta
+                if (tx.type === 'transfer') return false;
+
+                // Transacción estándar: verificar tipo de categoría
+                const cat = categories.find(c => String(c.id) === String(tx.category_id));
+                return cat && cat.type === typeFilter;
+            });
+        }
+
+        if (filteredTx.length === 0) {
+            listContainer.innerHTML = '<div class="empty-state">No hay movimientos en este período</div>';
+            return;
+        }
+
+        // 4. Ordenar transacciones cronológicamente (más recientes primero)
+        const sortedTx = [...filteredTx].sort((a, b) => {
+            const dateA = standardizeDate(a.date);
+            const dateB = standardizeDate(b.date);
+            const dateComp = dateB.localeCompare(dateA);
+            if (dateComp !== 0) return dateComp;
+            return (parseFloat(b.id) || 0) - (parseFloat(a.id) || 0);
+        });
+
+        // 5. Agrupar por fecha
+        const groups = {};
+        sortedTx.forEach(tx => {
+            const dateStr = standardizeDate(tx.date);
+            if (!groups[dateStr]) {
+                groups[dateStr] = [];
+            }
+            groups[dateStr].push(tx);
+        });
+
+        let html = '';
+        Object.entries(groups).forEach(([dateStr, txs]) => {
+            let formattedGroupDate = dateStr;
+            if (dateStr !== 'Fecha desconocida') {
+                try {
+                    const parts = dateStr.split('-');
+                    if (parts.length === 3) {
+                        const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+                        formattedGroupDate = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                        formattedGroupDate = formattedGroupDate.charAt(0).toUpperCase() + formattedGroupDate.slice(1);
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+
+                // Obtener fecha local de hoy y ayer
+                const getLocalDateStr = (d) => {
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    return `${yyyy}-${mm}-${dd}`;
+                };
+
+                const todayStr = getLocalDateStr(new Date());
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = getLocalDateStr(yesterday);
+
+                if (dateStr === todayStr) {
+                    formattedGroupDate = 'Hoy';
+                } else if (dateStr === yesterdayStr) {
+                    formattedGroupDate = 'Ayer';
+                }
+            } else {
+                formattedGroupDate = 'Fecha desconocida';
+            }
+
+            const itemsHtml = txs.map(tx => {
+                // Caso especial para Transferencias
+                if (tx.type === 'transfer') {
+                    const fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id)) || { name: 'Cuenta Origen', currency: '' };
+                    const toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id)) || { name: 'Cuenta Destino', currency: '' };
+                    
+                    const isOutgoing = String(tx.from_account_id) === String(accId);
+
+                    return `
+                        <div class="transaction-item edit-acc-tx-trigger" data-id="${tx.id}" style="border-left: 4px solid var(--accent-gold); cursor: pointer;">
+                            <div class="t-info">
+                                <div class="t-icon" style="background-color: var(--accent-gold); color: #fff;">
+                                    <i class="fa-solid fa-exchange-alt"></i>
+                                </div>
+                                <div class="t-text">
+                                    <span class="t-name">Transferencia interna</span>
+                                    <span class="t-date">${fromAcc.name} ➜ ${toAcc.name}</span>
+                                    ${parseFloat(tx.fee || 0) > 0 && isOutgoing ? `<span style="font-size:0.75rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
+                                </div>
+                            </div>
+                            <div style="text-align: right; line-height: 1.2;">
+                                ${isOutgoing 
+                                    ? `<span class="amount-expense" style="font-size: 0.95rem; font-weight: 700;">-${parseFloat(tx.amount_extracted || 0).toFixed(2)} ${fromAcc.currency}</span>`
+                                    : `<span class="amount-income" style="font-size: 0.95rem; font-weight: 700;">+${parseFloat(tx.amount_received || 0).toFixed(2)} ${toAcc.currency}</span>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const cat = categories.find(c => String(c.id) === String(tx.category_id)) || { icon: 'fa-tag', visual_color: '#ccc', name: 'Otros', type: 'expense' };
+                const amountSign = cat.type === 'expense' ? '-' : '+';
+                const amountClass = cat.type === 'expense' ? 'amount-expense' : 'amount-income';
+                
+                let iconClass = cat.icon || 'fa-tag';
+                if (!iconClass.startsWith('fa-')) iconClass = 'fa-' + iconClass;
+
+                return `
+                    <div class="transaction-item edit-acc-tx-trigger" data-id="${tx.id}" style="border-left: 4px solid ${cat.visual_color || '#ccc'}; cursor: pointer;">
+                        <div class="t-info">
+                            <div class="t-icon" style="background-color: ${cat.visual_color}">
+                                <i class="fa-solid ${iconClass}"></i>
+                            </div>
+                            <div class="t-text">
+                                <span class="t-name">${cat.name}</span>
+                                <span class="t-date">${tx.notes ? tx.notes : 'Sin descripción'}</span>
+                            </div>
+                        </div>
+                        <div class="t-amount ${amountClass}">${amountSign}$${parseFloat(tx.amount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                `;
+            }).join('');
+
+            html += `
+                <div class="transaction-group">
+                    <div class="transaction-group-header">${formattedGroupDate}</div>
+                    <div class="transaction-group-items">
+                        ${itemsHtml}
+                    </div>
+                </div>
+            `;
+        });
+
+        listContainer.innerHTML = html;
+
+        // Añadir event listeners para la edición de transacciones desde el historial del modal
+        listContainer.querySelectorAll('.edit-acc-tx-trigger').forEach(item => {
+            item.addEventListener('click', () => {
+                const txId = item.dataset.id;
+                // Ocultar modal del historial primero para evitar solapamientos
+                document.getElementById('account-history-modal').classList.add('hidden');
+                if (window.FormService) {
+                    window.FormService.openTransactionEditModal(txId);
+                }
+            });
         });
     }
 };
