@@ -1040,13 +1040,15 @@ export const Analytics = {
                         </div>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-top: 4px;">
-                        <span style="color: var(--text-secondary);">
-                            ${spentLabel}: <strong style="color: var(--text-primary); font-family: 'Inconsolata'; font-size: 0.95rem;">$${spent.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                        </span>
-                        <span style="color: var(--text-secondary);">
-                            ${limitLabel}: <strong style="color: var(--text-primary); font-family: 'Inconsolata'; font-size: 0.95rem;">$${budget.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                        </span>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px 16px; font-size: 0.9rem; margin-top: 4px;">
+                        <div style="display: flex; flex-direction: column; min-width: 110px; flex: 1 1 0px;">
+                            <span style="color: var(--text-secondary); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">${spentLabel}</span>
+                            <span style="color: var(--text-primary); font-family: 'Inconsolata'; font-size: 1.1rem; font-weight: 700; margin-top: 2px;">$${spent.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; min-width: 110px; flex: 1 1 0px; align-items: flex-end; text-align: right;">
+                            <span style="color: var(--text-secondary); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">${limitLabel}</span>
+                            <span style="color: var(--text-primary); font-family: 'Inconsolata'; font-size: 1.1rem; font-weight: 700; margin-top: 2px;">$${budget.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
                     </div>
 
                     <div style="height: 10px; background: rgba(0,0,0,0.04); border-radius: 6px; border: 1.5px solid var(--text-primary); overflow: hidden; position: relative; margin-top: 2px;">
