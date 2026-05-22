@@ -5,6 +5,7 @@ import { ImportService } from './js/import.js';
 import { FormService } from './js/forms.js';
 import { CurrencyService } from './js/currency.js';
 import { ZBBService } from './js/zbb.js';
+import { CalculatorService } from './js/calculator.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Finanzas Personales v2: Inicializando...');
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ImportService.init();
     FormService.init();
     ZBBService.init();
+    CalculatorService.init();
 
     // Actualizar divisas al inicio (sin bloquear la carga)
     CurrencyService.updateRates();

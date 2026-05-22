@@ -13,6 +13,7 @@ export const Analytics = {
         this.renderExpensesChart();
         this.renderNetWorthChart();
         this.renderZbbRuleChart();
+        this.renderBudgetProgress();
         
         // Escuchar cambios en el selector de filtro de tiempo
         const timeFilter = document.getElementById('analytics-time-filter');
@@ -36,6 +37,7 @@ export const Analytics = {
         this.renderExpensesChart();
         this.renderNetWorthChart();
         this.renderZbbRuleChart();
+        this.renderBudgetProgress();
     },
 
     renderExpensesChart() {
@@ -591,7 +593,7 @@ export const Analytics = {
         const legendElem = document.getElementById('zbb-rule-legend');
         if (!ctx || !legendElem) return;
 
-        const { transactions, categories, goals, accounts } = State.db;
+        const { transactions, categories, accounts } = State.db;
         const baseCurrency = State.db.settings.baseCurrency || 'USD';
         const rates = State.db.settings.exchangeRates || {};
         
@@ -624,39 +626,66 @@ export const Analytics = {
         let totalIncomeReal = 0;
         let totalNeeds = 0;
         let totalWants = 0;
+        let totalSavings = 0;
         
+        // 1. Sumar ingresos reales y gastos en categorías (Necesidades y Deseos)
         filteredTx.forEach(tx => {
-            const cat = categories.find(c => String(c.id) === String(tx.category_id));
-            if (cat) {
-                const acc = accounts.find(a => String(a.id) === String(tx.account_id));
-                const currency = acc ? acc.currency : baseCurrency;
-                const rate = rates[currency] || 1;
-                const amountInBase = parseFloat(tx.amount || 0) / rate;
-                
-                if (cat.type === 'income') {
-                    totalIncomeReal += amountInBase;
-                } else if (cat.type === 'expense') {
-                    if (cat.subtype === 'fixed') {
-                        totalNeeds += amountInBase;
-                    } else {
-                        totalWants += amountInBase;
+            if (tx.type !== 'transfer') {
+                const cat = categories.find(c => String(c.id) === String(tx.category_id));
+                if (cat) {
+                    const acc = accounts.find(a => String(a.id) === String(tx.account_id));
+                    const currency = acc ? acc.currency : baseCurrency;
+                    const rate = rates[currency] || 1;
+                    const amountInBase = parseFloat(tx.amount || 0) / rate;
+                    
+                    if (cat.type === 'income') {
+                        totalIncomeReal += amountInBase;
+                    } else if (cat.type === 'expense') {
+                        if (cat.subtype === 'variable') {
+                            totalWants += amountInBase;
+                        } else { // fixed
+                            totalNeeds += amountInBase;
+                        }
                     }
                 }
             }
         });
 
-        // Ahorros reales = Progreso actual de las metas en moneda base
-        let totalSavings = 0;
-        goals.forEach(g => {
-            const current = g.account_id ? (accounts.find(a => String(a.id) === String(g.account_id))?.balance || 0) : (g.current || 0);
-            
-            let currency = baseCurrency;
-            if (g.account_id) {
-                const acc = accounts.find(a => String(a.id) === String(g.account_id));
-                if (acc) currency = acc.currency;
+        // 2. Calcular flujo neto agregado de las cuentas de Ahorro y Deuda (Futuros)
+        const futureAccounts = accounts.filter(a => a.type === 'savings' || a.type === 'debt');
+        futureAccounts.forEach(acc => {
+            let accNetFlow = 0;
+            filteredTx.forEach(tx => {
+                if (tx.type === 'transfer') {
+                    if (String(tx.to_account_id) === String(acc.id)) {
+                        const toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                        const rate = rates[toAcc ? toAcc.currency : baseCurrency] || 1;
+                        accNetFlow += parseFloat(tx.amount_received || 0) / rate;
+                    }
+                    if (String(tx.from_account_id) === String(acc.id)) {
+                        const fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
+                        const rate = rates[fromAcc ? fromAcc.currency : baseCurrency] || 1;
+                        accNetFlow -= parseFloat(tx.amount_extracted || 0) / rate;
+                    }
+                } else {
+                    if (String(tx.account_id) === String(acc.id)) {
+                        const cat = categories.find(c => String(c.id) === String(tx.category_id));
+                        if (cat) {
+                            const rate = rates[acc.currency] || 1;
+                            const amountInBase = parseFloat(tx.amount || 0) / rate;
+                            if (cat.type === 'income') {
+                                accNetFlow += amountInBase;
+                            } else if (cat.type === 'expense') {
+                                accNetFlow -= amountInBase;
+                            }
+                        }
+                    }
+                }
+            });
+            // Si el flujo neto de la cuenta es positivo (hemos ahorrado o pagado deuda neta en el periodo), se suma a Futuros
+            if (accNetFlow > 0) {
+                totalSavings += accNetFlow;
             }
-            const rate = rates[currency] || 1;
-            totalSavings += current / rate;
         });
 
         // Ingreso base para calcular la distribución
@@ -706,7 +735,7 @@ export const Analytics = {
                     </div>
                 </div>
                 <div>
-                    <strong>Ahorro (Ideal 20%):</strong> 
+                    <strong>Futuro (Ideal 20%):</strong> 
                     <span style="float: right;">${pctSavings.toFixed(1)}% ($${totalSavings.toLocaleString('es-ES', { maximumFractionDigits: 0 })} ${baseCurrency})</span>
                     <div style="height: 6px; background: rgba(0,0,0,0.05); border-radius: 3px; overflow: hidden; margin-top: 3px;">
                         <div style="width: ${Math.min(100, pctSavings)}%; height: 100%; background: #A5BCA6;"></div>
@@ -720,14 +749,14 @@ export const Analytics = {
 
         // Si todos los valores son cero, no renderizar gráfico
         if (totalNeeds === 0 && totalWants === 0 && totalSavings === 0) {
-            ctx.parentElement.innerHTML = '<div class="empty-state" style="padding: 40px 0;">Registra ingresos, gastos o metas para activar la regla 50/30/20</div>';
+            ctx.parentElement.innerHTML = '<div class="empty-state" style="padding: 40px 0;">Registra ingresos, gastos o transferencias para activar la regla 50/30/20</div>';
             return;
         }
 
         this.charts.zbbRule = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Necesidades', 'Deseos', 'Ahorro'],
+                labels: ['Necesidades', 'Deseos', 'Futuro'],
                 datasets: [{
                     data: [
                         parseFloat(totalNeeds.toFixed(2)),
@@ -756,5 +785,275 @@ export const Analytics = {
                 }
             }
         });
+    },
+
+    renderBudgetProgress() {
+        const listElem = document.getElementById('budget-progress-list');
+        if (!listElem) return;
+
+        const { transactions, categories, accounts } = State.db;
+        const baseCurrency = State.db.settings.baseCurrency || 'USD';
+        const rates = State.db.settings.exchangeRates || {};
+
+        // 1. Obtener filtro de rango temporal seleccionado en la interfaz
+        const timeFilter = document.getElementById('analytics-time-filter')?.value || 'all';
+        let filteredTx = transactions;
+        const now = new Date();
+        let cutoffDate = null;
+
+        if (timeFilter === 'week') {
+            cutoffDate = new Date(); cutoffDate.setDate(now.getDate() - 7);
+        } else if (timeFilter === 'month') {
+            cutoffDate = new Date(); cutoffDate.setDate(now.getDate() - 30);
+        } else if (timeFilter === '3months') {
+            cutoffDate = new Date(); cutoffDate.setDate(now.getDate() - 90);
+        } else if (timeFilter === 'year') {
+            cutoffDate = new Date(); cutoffDate.setFullYear(now.getFullYear() - 1);
+        }
+
+        if (cutoffDate) {
+            cutoffDate.setHours(0, 0, 0, 0);
+            filteredTx = transactions.filter(tx => {
+                const comp = getLocalDateComponents(tx.date);
+                if (!comp) return false;
+                const txDate = new Date(comp.year, comp.month, comp.day);
+                return txDate >= cutoffDate;
+            });
+        }
+
+        // 2. Recopilar elementos presupuestados
+        const budgetedItems = [];
+
+        // Categorías de gasto con presupuesto mayor a 0
+        categories.forEach(cat => {
+            if (cat.type === 'expense' && parseFloat(cat.budget) > 0) {
+                budgetedItems.push({
+                    id: `cat_${cat.id}`,
+                    name: cat.name,
+                    icon: cat.icon || 'fa-tag',
+                    color: cat.visual_color,
+                    isAccount: false,
+                    subtype: cat.subtype || 'fixed',
+                    budget: parseFloat(cat.budget),
+                    spent: 0
+                });
+            }
+        });
+
+        // Cuentas con presupuesto mayor a 0 (Futuros)
+        accounts.forEach(acc => {
+            if ((acc.type === 'savings' || acc.type === 'debt') && parseFloat(acc.budget) > 0) {
+                budgetedItems.push({
+                    id: `acc_${acc.id}`,
+                    name: acc.name,
+                    icon: acc.type === 'savings' ? 'fa-piggy-bank' : 'fa-hand-holding-dollar',
+                    color: acc.color || '#A5BCA6',
+                    isAccount: true,
+                    subtype: 'future',
+                    budget: parseFloat(acc.budget),
+                    spent: 0 // Representará el flujo neto en base
+                });
+            }
+        });
+
+        // 3. Acumular transacciones reales para cada elemento
+        filteredTx.forEach(tx => {
+            // Gastos para categorías
+            if (tx.type !== 'transfer') {
+                const catId = `cat_${tx.category_id}`;
+                const item = budgetedItems.find(i => i.id === catId);
+                if (item && tx.type === 'expense') {
+                    const acc = accounts.find(a => String(a.id) === String(tx.account_id));
+                    const currency = acc ? acc.currency : baseCurrency;
+                    const rate = rates[currency] || 1;
+                    const amountInBase = parseFloat(tx.amount || 0) / rate;
+                    item.spent += amountInBase;
+                }
+            }
+
+            // Flujo neto para cuentas presupuestadas
+            budgetedItems.forEach(item => {
+                if (item.isAccount) {
+                    const accId = String(item.id.replace('acc_', ''));
+                    if (tx.type === 'transfer') {
+                        if (String(tx.to_account_id) === accId) {
+                            const toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                            const rate = rates[toAcc ? toAcc.currency : baseCurrency] || 1;
+                            item.spent += parseFloat(tx.amount_received || 0) / rate;
+                        }
+                        if (String(tx.from_account_id) === accId) {
+                            const fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
+                            const rate = rates[fromAcc ? fromAcc.currency : baseCurrency] || 1;
+                            item.spent -= parseFloat(tx.amount_extracted || 0) / rate;
+                        }
+                    } else {
+                        if (String(tx.account_id) === accId) {
+                            const cat = categories.find(c => String(c.id) === String(tx.category_id));
+                            if (cat) {
+                                const acc = accounts.find(a => String(a.id) === String(tx.account_id));
+                                const rate = rates[acc ? acc.currency : baseCurrency] || 1;
+                                const amountInBase = parseFloat(tx.amount || 0) / rate;
+                                if (cat.type === 'income') {
+                                    item.spent += amountInBase;
+                                } else if (cat.type === 'expense') {
+                                    item.spent -= amountInBase;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        if (budgetedItems.length === 0) {
+            listElem.innerHTML = `
+                <div class="empty-state" style="padding: 30px; text-align: center; color: var(--text-secondary); font-style: italic; background-color: var(--bg-card);">
+                    <i class="fa-solid fa-calculator" style="font-size: 2rem; margin-bottom: 12px; opacity: 0.5;"></i>
+                    <p>No se han establecido topes o metas de presupuesto en la calculadora ZBB todavía.</p>
+                    <p style="font-size: 0.85rem; margin-top: 5px;">Ve a la pestaña de Presupuesto ZBB para asignar límites a tus categorías y cuentas.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // 4. Ordenar: prioritariamente los límites excedidos en gastos o los menores progresos en ahorro primero
+        budgetedItems.sort((a, b) => {
+            const pctA = a.budget > 0 ? (a.spent / a.budget) * 100 : 0;
+            const pctB = b.budget > 0 ? (b.spent / b.budget) * 100 : 0;
+            
+            // Si son de distinta naturaleza, ponemos los excedidos de gasto o menores de ahorro
+            if (a.isAccount !== b.isAccount) {
+                return a.isAccount ? 1 : -1; // Categorías de gasto primero para advertencias rápidas
+            }
+            
+            if (!a.isAccount) {
+                return pctB - pctA; // Mayor porcentaje de gasto excedido primero
+            } else {
+                return pctA - pctB; // Menor porcentaje de meta de ahorro cumplido primero
+            }
+        });
+
+        // Helper para información de subtipo
+        const getSubtypeInfo = (subtype) => {
+            if (subtype === 'variable') {
+                return { name: 'Deseo', color: '#D9A098', icon: 'fa-gift' };
+            } else if (subtype === 'future') {
+                return { name: 'Futuro', color: '#A5BCA6', icon: 'fa-piggy-bank' };
+            } else {
+                return { name: 'Necesidad', color: '#2B2B2B', icon: 'fa-house-chimney' };
+            }
+        };
+
+        // 5. Renderizar
+        listElem.innerHTML = budgetedItems.map((item) => {
+            const budget = item.budget;
+            let spent = item.spent;
+            let pct = budget > 0 ? (spent / budget) * 100 : 0;
+            let displayPct = pct;
+            if (displayPct < 0) displayPct = 0; // Evitar barra de progreso negativa
+
+            let barColor = '#4B5563'; // Gris neutro
+            let badgeColor = 'rgba(0,0,0,0.06)';
+            let badgeText = `${displayPct.toFixed(0)}%`;
+            let statusText = 'En control';
+            let statusIcon = 'fa-circle-check';
+            let statusTextColor = 'var(--text-secondary)';
+
+            if (item.isAccount) {
+                // LÓGICA DE CUENTAS (META DE APORTE - FUTUROS)
+                if (spent < 0) {
+                    barColor = 'var(--action-expense)'; // Rojo para desahorro neto o incremento de deudas
+                    badgeColor = 'rgba(178, 58, 30, 0.15)';
+                    badgeText = `-$${Math.abs(spent).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    statusText = 'Flujo Negativo';
+                    statusIcon = 'fa-circle-minus';
+                    statusTextColor = 'var(--action-expense)';
+                    displayPct = 0;
+                } else if (pct >= 100) {
+                    barColor = 'var(--action-income)'; // Verde para meta cumplida o superada
+                    badgeColor = 'rgba(0, 95, 86, 0.15)';
+                    badgeText = `¡Meta Alcanzada al ${pct.toFixed(0)}%!`;
+                    statusText = 'Meta Cumplida';
+                    statusIcon = 'fa-circle-check';
+                    statusTextColor = 'var(--action-income)';
+                } else if (pct >= 80) {
+                    barColor = '#DFB574'; // Dorado para progreso aceptable
+                    badgeColor = 'rgba(223, 181, 116, 0.15)';
+                    badgeText = `${pct.toFixed(0)}%`;
+                    statusText = 'Buen progreso';
+                    statusIcon = 'fa-circle-exclamation';
+                    statusTextColor = '#DFB574';
+                } else {
+                    barColor = '#4B5563'; // Gris/Rojo suave para progreso bajo
+                    badgeColor = 'rgba(75, 85, 99, 0.1)';
+                    badgeText = `${pct.toFixed(0)}%`;
+                    statusText = 'Pendiente / Bajo aporte';
+                    statusIcon = 'fa-hourglass';
+                    statusTextColor = 'var(--text-secondary)';
+                }
+            } else {
+                // LÓGICA DE CATEGORÍAS (LÍMITE DE GASTO - NECESIDADES/DESEOS)
+                if (pct >= 100) {
+                    barColor = 'var(--action-expense)';
+                    badgeColor = 'rgba(178, 58, 30, 0.15)';
+                    badgeText = `¡Excedido por ${(pct - 100).toFixed(0)}%!`;
+                    statusText = 'Límite Superado';
+                    statusIcon = 'fa-triangle-exclamation';
+                    statusTextColor = 'var(--action-expense)';
+                } else if (pct >= 80) {
+                    barColor = '#DFB574';
+                    badgeColor = 'rgba(223, 181, 116, 0.15)';
+                    badgeText = `${pct.toFixed(0)}%`;
+                    statusText = 'Cerca del límite';
+                    statusIcon = 'fa-circle-exclamation';
+                    statusTextColor = '#DFB574';
+                }
+            }
+
+            const subtypeInfo = getSubtypeInfo(item.subtype);
+
+            // Textos descriptivos condicionales
+            const spentLabel = item.isAccount ? 'Aportado (Periodo)' : 'Gastado (Periodo)';
+            const limitLabel = item.isAccount ? 'Meta de Aporte' : 'Límite (Tope)';
+
+            return `
+                <div class="transaction-item" style="padding: 16px 20px; border-radius: 12px 6px 10px 4px; border: 2px solid var(--text-primary); background-color: var(--bg-card); display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s ease;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="background-color: ${item.color}; width: 34px; height: 34px; border: 1.5px solid var(--text-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.95rem;">
+                                <i class="fa-solid ${item.icon}"></i>
+                            </div>
+                            <div>
+                                <strong style="font-size: 1.05rem; color: var(--text-primary);">${item.name}</strong>
+                                <div style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background-color: ${subtypeInfo.color}22; color: ${subtypeInfo.color === '#2B2B2B' ? 'var(--text-primary)' : subtypeInfo.color}; border: 1px solid ${subtypeInfo.color === '#2B2B2B' ? 'var(--text-primary)' : subtypeInfo.color}; font-weight: bold;">
+                                    <i class="fa-solid ${subtypeInfo.icon}" style="font-size: 0.65rem;"></i>
+                                    ${subtypeInfo.name}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: ${statusTextColor}; background-color: ${badgeColor}; padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid ${statusTextColor}55;">
+                                <i class="fa-solid ${statusIcon}"></i>
+                                ${statusText}
+                            </span>
+                            <span style="font-family: 'Inconsolata'; font-size: 1.05rem; font-weight: 800; color: var(--text-primary);">${badgeText}</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-top: 4px;">
+                        <span style="color: var(--text-secondary);">
+                            ${spentLabel}: <strong style="color: var(--text-primary); font-family: 'Inconsolata'; font-size: 0.95rem;">$${spent.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        </span>
+                        <span style="color: var(--text-secondary);">
+                            ${limitLabel}: <strong style="color: var(--text-primary); font-family: 'Inconsolata'; font-size: 0.95rem;">$${budget.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        </span>
+                    </div>
+
+                    <div style="height: 10px; background: rgba(0,0,0,0.04); border-radius: 6px; border: 1.5px solid var(--text-primary); overflow: hidden; position: relative; margin-top: 2px;">
+                        <div style="width: ${Math.min(100, displayPct)}%; height: 100%; background: ${barColor}; transition: width 0.4s cubic-bezier(0.1, 0.8, 0.2, 1);"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 };

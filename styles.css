@@ -384,3 +384,48 @@ body {
         font-size: 1.1rem !important;
     }
 }
+
+.btn-danger {
+    background-color: var(--action-expense);
+    color: var(--bg-primary);
+    border-radius: 12px 2px 10px 4px;
+    padding: 15px;
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    letter-spacing: 1px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid var(--text-primary);
+    transition: transform 0.1s;
+}
+.btn-danger:active {
+    transform: translateY(3px);
+}
+
+/* Eliminar flechas (spinners) de inputs de tipo number en todos los navegadores */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+/* Estilos de la Calculadora Neo-Brutalista */
+.btn-calc:hover {
+    background-color: var(--text-primary) !important;
+    color: var(--bg-primary) !important;
+}
+.btn-calc:active {
+    transform: translateY(2px);
+}
+.btn-calc-key:active {
+    transform: translate(1px, 1px) !important;
+    box-shadow: 1px 1px 0px var(--text-primary) !important;
+}
+#calc-apply-btn:active {
+    transform: translate(2px, 2px) !important;
+    box-shadow: 1px 1px 0px var(--text-primary) !important;
+}
+

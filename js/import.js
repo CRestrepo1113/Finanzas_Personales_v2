@@ -50,9 +50,9 @@ export const ImportService = {
             csvContent += "### AJUSTES_SISTEMA ###\nBaseCurrency,ExchangeRates\n";
             csvContent += `${p.db.settings.baseCurrency},"${JSON.stringify(p.db.settings.exchangeRates).replace(/"/g, '""')}"\n\n`;
 
-            csvContent += "### BLOQUE_CUENTAS ###\nid,name,currency,balance,type,color\n";
+            csvContent += "### BLOQUE_CUENTAS ###\nid,name,currency,balance,type,color,budget\n";
             p.db.accounts.forEach(a => { 
-                csvContent += `${a.id},"${a.name}",${a.currency},${a.balance},${a.type},${a.color || ''}\n`; 
+                csvContent += `${a.id},"${a.name}",${a.currency},${a.balance},${a.type},${a.color || ''},${a.budget || 0}\n`; 
             });
             csvContent += "\n";
 
@@ -154,7 +154,8 @@ export const ImportService = {
                     if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_CUENTAS ###') {
                         db.accounts.push({
                             id: parseId(cols[0]), name: cols[1], currency: cols[2],
-                            balance: parseVal(cols[3]), type: cols[4], color: cols[5]
+                            balance: parseVal(cols[3]), type: cols[4], color: cols[5],
+                            budget: cols[6] !== undefined ? parseVal(cols[6]) : 0
                         });
                     }
                     break;

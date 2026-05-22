@@ -151,8 +151,8 @@ export const UI = {
             const rate = settings.exchangeRates[acc.currency];
             const safeRate = (rate && rate > 0) ? rate : 1;
             const balanceInBase = acc.balance / safeRate;
-            if (acc.type === 'asset') assets += balanceInBase;
-            else liabilities += Math.abs(balanceInBase);
+            if (acc.type === 'debt' || acc.type === 'liability') liabilities += Math.abs(balanceInBase);
+            else assets += balanceInBase;
         });
 
         const netWorth = assets - liabilities;

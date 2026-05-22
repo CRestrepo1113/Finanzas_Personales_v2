@@ -12,6 +12,39 @@ class StateManager {
         this.profilesState = await StorageService.loadProfiles();
         this.activeProfile = this.profilesState.profiles.find(p => String(p.id) === String(this.profilesState.activeProfileId));
         this.db = this.activeProfile.db;
+
+        // Migración automática de tipos de cuenta y adición de propiedad budget
+        let migrated = false;
+        if (this.db.accounts) {
+            this.db.accounts.forEach(acc => {
+                if (acc.type === 'asset') {
+                    acc.type = acc.name.toLowerCase().includes('ahorr') ? 'savings' : 'current';
+                    migrated = true;
+                } else if (acc.type === 'liability') {
+                    acc.type = 'debt';
+                    migrated = true;
+                }
+                if (acc.budget === undefined) {
+                    acc.budget = 0;
+                    migrated = true;
+                }
+            });
+        }
+
+        // Migración de categorías previamente configuradas como future
+        if (this.db.categories) {
+            this.db.categories.forEach(cat => {
+                if (cat.subtype === 'future') {
+                    cat.subtype = 'variable';
+                    migrated = true;
+                }
+            });
+        }
+
+        if (migrated) {
+            this.save();
+        }
+
         this.notify();
     }
 
@@ -165,7 +198,7 @@ class StateManager {
      }
 
     updateAccountBalance(accountId, amount) {
-        const account = this.db.accounts.find(a => a.id === accountId);
+        const account = this.db.accounts.find(a => String(a.id) === String(accountId));
         if (account) {
             account.balance += amount;
             this.notify();
@@ -187,16 +220,23 @@ class StateManager {
         }
     }
 
-    updateCategoryBudgets(updates) {
+    updateCategoryBudgets(updates, zbbIncome = null, accountUpdates = []) {
         updates.forEach(upd => {
             const cat = this.db.categories.find(c => String(c.id) === String(upd.id));
-            if (cat) cat.budget = upd.budget;
+            if (cat) cat.budget = parseFloat(upd.budget) || 0;
         });
+        accountUpdates.forEach(upd => {
+            const acc = this.db.accounts.find(a => String(a.id) === String(upd.id));
+            if (acc) acc.budget = parseFloat(upd.budget) || 0;
+        });
+        if (zbbIncome !== null) {
+            this.db.settings.zbbIncome = parseFloat(zbbIncome) || 0;
+        }
         this.notify();
     }
 
     addAccount(acc) {
-        this.db.accounts.push({ id: Date.now(), ...acc });
+        this.db.accounts.push({ id: Date.now(), budget: 0, ...acc });
         this.notify();
     }
 
@@ -206,6 +246,19 @@ class StateManager {
             this.db.accounts[index] = { ...this.db.accounts[index], ...data };
             this.notify();
         }
+    }
+
+    deleteAccount(id) {
+        this.db.accounts = this.db.accounts.filter(a => String(a.id) !== String(id));
+        this.db.goals.forEach(g => {
+            if (String(g.account_id) === String(id)) g.account_id = null;
+        });
+        this.db.transactions = this.db.transactions.filter(t => 
+            String(t.account_id) !== String(id) && 
+            String(t.from_account_id) !== String(id) && 
+            String(t.to_account_id) !== String(id)
+        );
+        this.notify();
     }
 
     addCategory(cat) {
@@ -221,6 +274,12 @@ class StateManager {
         }
     }
 
+    deleteCategory(id) {
+        this.db.categories = this.db.categories.filter(c => String(c.id) !== String(id));
+        this.db.transactions = this.db.transactions.filter(t => String(t.category_id) !== String(id));
+        this.notify();
+    }
+
     addGoal(goal) {
         this.db.goals.push({ id: Date.now(), current: 0, ...goal });
         this.notify();
@@ -232,6 +291,11 @@ class StateManager {
             this.db.goals[index] = { ...this.db.goals[index], ...data };
             this.notify();
         }
+    }
+
+    deleteGoal(id) {
+        this.db.goals = this.db.goals.filter(g => String(g.id) !== String(id));
+        this.notify();
     }
 
     fundGoal(id, amount) {

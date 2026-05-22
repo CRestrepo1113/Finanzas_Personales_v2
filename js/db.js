@@ -4,8 +4,8 @@ export const INITIAL_DB = {
         exchangeRates: { 'USD': 1, 'EUR': 0.92, 'COP': 3900, 'RUB': 90 }
     },
     accounts: [
-        { id: 1, name: 'Cuenta de Ahorros', currency: 'USD', balance: 0.00, type: 'asset', color: '#A5BCA6' },
-        { id: 2, name: 'Tarjeta Principal', currency: 'USD', balance: 0.00, type: 'liability', color: '#D9A098' }
+        { id: 1, name: 'Cuenta de Ahorros', currency: 'USD', balance: 0.00, type: 'savings', color: '#A5BCA6' },
+        { id: 2, name: 'Tarjeta Principal', currency: 'USD', balance: 0.00, type: 'debt', color: '#D9A098' }
     ],
     categories: [
         { id: 1, name: 'Sueldo', type: 'income', subtype: 'fixed', visual_color: '#005F56', icon: 'fa-briefcase', budget: 0 },

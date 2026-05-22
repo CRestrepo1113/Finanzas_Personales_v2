@@ -1,5 +1,7 @@
 import { State } from './state.js';
 import { UI } from './ui.js';
+import { CalculatorService } from './calculator.js';
+
 
 export const FormService = {
     currentType: 'expense',
@@ -38,6 +40,30 @@ export const FormService = {
         
         const transDeleteBtn = document.getElementById('trans-delete-btn');
         if (transDeleteBtn) transDeleteBtn.onclick = () => this.handleTransferDelete();
+
+        const accDeleteBtn = document.getElementById('acc-delete-btn');
+        if (accDeleteBtn) accDeleteBtn.onclick = () => this.handleAccountDelete();
+
+        const catDeleteBtn = document.getElementById('cat-delete-btn');
+        if (catDeleteBtn) catDeleteBtn.onclick = () => this.handleCategoryDelete();
+
+        const goalDeleteBtn = document.getElementById('goal-delete-btn');
+        if (goalDeleteBtn) goalDeleteBtn.onclick = () => this.handleGoalDelete();
+
+        // Botones de calculadora al lado del monto
+        const txAmtCalc = document.getElementById('tx-amount-calc');
+        if (txAmtCalc) {
+            txAmtCalc.onclick = () => {
+                CalculatorService.open(document.getElementById('tx-amount'));
+            };
+        }
+        
+        const transAmtCalc = document.getElementById('trans-amount-calc');
+        if (transAmtCalc) {
+            transAmtCalc.onclick = () => {
+                CalculatorService.open(document.getElementById('trans-amount'));
+            };
+        }
 
         // Eventos de cierre
         const closeBtns = {
@@ -115,6 +141,32 @@ export const FormService = {
                 };
             });
         }
+
+        // Selector de Iconos de Meta
+        const goalIconSelector = document.getElementById('goal-icon-selector');
+        if (goalIconSelector) {
+            const goalIconInput = document.getElementById('goal-icon');
+            goalIconSelector.querySelectorAll('i').forEach(icon => {
+                icon.onclick = () => {
+                    goalIconSelector.querySelectorAll('i').forEach(i => i.classList.remove('selected'));
+                    icon.classList.add('selected');
+                    goalIconInput.value = icon.dataset.icon;
+                };
+            });
+        }
+
+        // Mostrar/ocultar subtipo de categorías según tipo de categoría
+        const catTypeSelect = document.getElementById('cat-type');
+        const catSubtypeGroup = document.getElementById('cat-subtype-group');
+        if (catTypeSelect && catSubtypeGroup) {
+            catTypeSelect.addEventListener('change', () => {
+                if (catTypeSelect.value === 'expense') {
+                    catSubtypeGroup.classList.remove('hidden');
+                } else {
+                    catSubtypeGroup.classList.add('hidden');
+                }
+            });
+        }
     },
 
     // --- UTILIDAD DE FECHA LOCAL ---
@@ -163,7 +215,7 @@ export const FormService = {
 
         if (title) title.textContent = 'Transferencia';
         if (deleteBtn) deleteBtn.classList.add('hidden');
-        if (submitBtn) submitBtn.textContent = 'Realizar Transferencia';
+        if (submitBtn) submitBtn.textContent = 'Guardar';
 
         document.getElementById('trans-id').value = '';
         const options = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
@@ -269,6 +321,12 @@ export const FormService = {
             });
         }
 
+        const deleteBtn = document.getElementById('acc-delete-btn');
+        if (deleteBtn) {
+            if (id) deleteBtn.classList.remove('hidden');
+            else deleteBtn.classList.add('hidden');
+        }
+
         modal.classList.remove('hidden');
     },
 
@@ -277,12 +335,22 @@ export const FormService = {
         const form = document.getElementById('category-form');
         let selectedColor = '#6B8E9B'; // Color por defecto
         let selectedIcon = 'fa-tag';   // Icono por defecto
+        const subtypeGroup = document.getElementById('cat-subtype-group');
 
         if (id) {
             const cat = State.db.categories.find(c => String(c.id) === String(id));
             form['cat-id'].value = cat.id;
             form['cat-name'].value = cat.name;
             form['cat-type'].value = cat.type;
+            
+            // Establecer subtipo si es gasto
+            if (cat.type === 'expense') {
+                form['cat-subtype'].value = cat.subtype || 'fixed';
+                if (subtypeGroup) subtypeGroup.classList.remove('hidden');
+            } else {
+                if (subtypeGroup) subtypeGroup.classList.add('hidden');
+            }
+
             form['cat-icon'].value = cat.icon;
             form['cat-color'].value = cat.visual_color;
             selectedColor = cat.visual_color;
@@ -290,6 +358,9 @@ export const FormService = {
         } else {
             form.reset();
             form['cat-id'].value = '';
+            form['cat-type'].value = 'expense';
+            form['cat-subtype'].value = 'fixed';
+            if (subtypeGroup) subtypeGroup.classList.remove('hidden');
             form['cat-color'].value = selectedColor;
             form['cat-icon'].value = selectedIcon;
         }
@@ -312,6 +383,13 @@ export const FormService = {
             });
         }
 
+        // Manejar botón de eliminar
+        const deleteBtn = document.getElementById('cat-delete-btn');
+        if (deleteBtn) {
+            if (id) deleteBtn.classList.remove('hidden');
+            else deleteBtn.classList.add('hidden');
+        }
+
         modal.classList.remove('hidden');
     },
 
@@ -321,6 +399,7 @@ export const FormService = {
         const modal = document.getElementById('goal-modal');
         const form = document.getElementById('goal-form');
         const accSelect = document.getElementById('goal-account');
+        let selectedIcon = 'fa-bullseye'; // Icono por defecto
 
         accSelect.innerHTML = '<option value="">Ninguna (Fondo Independiente)</option>' + 
             State.db.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
@@ -331,11 +410,30 @@ export const FormService = {
             form['goal-name'].value = goal.name;
             form['goal-target'].value = goal.target;
             form['goal-account'].value = goal.account_id || '';
-            form['goal-icon'].value = goal.icon;
+            form['goal-icon'].value = goal.icon || 'fa-bullseye';
+            selectedIcon = goal.icon || 'fa-bullseye';
         } else {
             form.reset();
             form['goal-id'].value = '';
+            form['goal-icon'].value = selectedIcon;
         }
+
+        // Actualizar clase selected en la cuadrícula de iconos de la meta
+        const iconSelector = document.getElementById('goal-icon-selector');
+        if (iconSelector) {
+            iconSelector.querySelectorAll('i').forEach(i => {
+                if (i.dataset.icon === selectedIcon) i.classList.add('selected');
+                else i.classList.remove('selected');
+            });
+        }
+
+        // Manejar visibilidad del botón eliminar
+        const deleteBtn = document.getElementById('goal-delete-btn');
+        if (deleteBtn) {
+            if (id) deleteBtn.classList.remove('hidden');
+            else deleteBtn.classList.add('hidden');
+        }
+
         modal.classList.remove('hidden');
     },
 
@@ -438,6 +536,36 @@ export const FormService = {
         }
     },
 
+    handleAccountDelete() {
+        const id = document.getElementById('acc-id').value;
+        if (!id) return;
+
+        if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta cuenta? Se eliminarán también todos sus movimientos y se desvinculará de las metas.")) {
+            State.deleteAccount(id);
+            this.hideModal('account-modal');
+        }
+    },
+
+    handleCategoryDelete() {
+        const id = document.getElementById('cat-id').value;
+        if (!id) return;
+
+        if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta categoría? Se eliminarán también todas sus transacciones.")) {
+            State.deleteCategory(id);
+            this.hideModal('category-modal');
+        }
+    },
+
+    handleGoalDelete() {
+        const id = document.getElementById('goal-id').value;
+        if (!id) return;
+
+        if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta meta de ahorro?")) {
+            State.deleteGoal(id);
+            this.hideModal('goal-modal');
+        }
+    },
+
     handleAccountSubmit(e) {
         e.preventDefault();
         const f = e.target;
@@ -450,7 +578,16 @@ export const FormService = {
     handleCategorySubmit(e) {
         e.preventDefault();
         const f = e.target;
-        const data = { name: f['cat-name'].value, type: f['cat-type'].value, icon: f['cat-icon'].value, visual_color: f['cat-color'].value };
+        const type = f['cat-type'].value;
+        const subtype = type === 'expense' ? f['cat-subtype'].value : null;
+
+        const data = { 
+            name: f['cat-name'].value, 
+            type: type, 
+            subtype: subtype,
+            icon: f['cat-icon'].value, 
+            visual_color: f['cat-color'].value 
+        };
         if (f['cat-id'].value) State.updateCategory(f['cat-id'].value, data);
         else State.addCategory(data);
         this.hideModal('category-modal');
@@ -582,5 +719,8 @@ export const FormService = {
 
     hideModal(id) {
         document.getElementById(id).classList.add('hidden');
+        if (id === 'transaction-modal' || id === 'transfer-modal') {
+            CalculatorService.close();
+        }
     }
 };

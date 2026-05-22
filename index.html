@@ -130,6 +130,14 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Progreso de Presupuestos -->
+                <div id="budget-progress-container" style="position: relative; margin-top: 50px; margin-bottom: 50px;">
+                    <h3 style="margin-bottom: 15px;">Progreso de Presupuestos (Topes vs Gastos Reales)</h3>
+                    <div class="settings-card" id="budget-progress-list" style="display: flex; flex-direction: column; gap: 18px; padding: 20px;">
+                        <!-- Inyectado dinámicamente por JS -->
+                    </div>
+                </div>
             </section>
 
             <!-- ====== VIEW: ZBB ====== -->
@@ -230,8 +238,9 @@
                     <div class="input-group">
                         <label for="acc-type">Tipo</label>
                         <select id="acc-type">
-                            <option value="asset">Activo</option>
-                            <option value="liability">Pasivo</option>
+                            <option value="current">Corriente</option>
+                            <option value="savings">Ahorro</option>
+                            <option value="debt">Deuda</option>
                         </select>
                     </div>
                     <div class="input-group">
@@ -264,7 +273,10 @@
                             <div class="color-swatch" style="background-color: #2B2B2B;" data-color="#2B2B2B"></div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-save">Guardar Cuenta</button>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="button" class="btn btn-danger hidden" id="acc-delete-btn" style="flex: 1; margin: 0;">Eliminar</button>
+                        <button type="submit" class="btn btn-save" id="acc-save-btn" style="flex: 1.5; margin: 0;">Guardar</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -287,6 +299,13 @@
                         <select id="cat-type">
                             <option value="expense">Gasto</option>
                             <option value="income">Ingreso</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="cat-subtype-group">
+                        <label for="cat-subtype">Clasificación de Gasto</label>
+                        <select id="cat-subtype">
+                            <option value="fixed">Necesidad (Fijo)</option>
+                            <option value="variable">Deseo (Variable)</option>
                         </select>
                     </div>
                     <div class="input-group">
@@ -349,7 +368,10 @@
                             <div class="color-swatch" style="background-color: #2B2B2B;" data-color="#2B2B2B"></div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-save">Guardar Categoría</button>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="button" class="btn btn-danger hidden" id="cat-delete-btn" style="flex: 1; margin: 0;">Eliminar</button>
+                        <button type="submit" class="btn btn-save" id="cat-save-btn" style="flex: 1.5; margin: 0;">Guardar</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -396,10 +418,27 @@
                         </select>
                     </div>
                     <div class="input-group">
-                        <label for="goal-icon">Icono (FA)</label>
-                        <input type="text" id="goal-icon" value="fa-bullseye">
+                        <label>Icono</label>
+                        <input type="hidden" id="goal-icon" value="fa-bullseye">
+                        <div class="icon-selector" id="goal-icon-selector">
+                            <i class="fa-solid fa-bullseye selected" data-icon="fa-bullseye"></i>
+                            <i class="fa-solid fa-piggy-bank" data-icon="fa-piggy-bank"></i>
+                            <i class="fa-solid fa-plane" data-icon="fa-plane"></i>
+                            <i class="fa-solid fa-car" data-icon="fa-car"></i>
+                            <i class="fa-solid fa-house" data-icon="fa-house"></i>
+                            <i class="fa-solid fa-graduation-cap" data-icon="fa-graduation-cap"></i>
+                            <i class="fa-solid fa-gem" data-icon="fa-gem"></i>
+                            <i class="fa-solid fa-umbrella-beach" data-icon="fa-umbrella-beach"></i>
+                            <i class="fa-solid fa-heart-pulse" data-icon="fa-heart-pulse"></i>
+                            <i class="fa-solid fa-laptop" data-icon="fa-laptop"></i>
+                            <i class="fa-solid fa-gift" data-icon="fa-gift"></i>
+                            <i class="fa-solid fa-money-bill-wave" data-icon="fa-money-bill-wave"></i>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-save">Guardar Meta</button>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button type="button" class="btn btn-danger hidden" id="goal-delete-btn" style="flex: 1; margin: 0;">Eliminar</button>
+                        <button type="submit" class="btn btn-save" id="goal-save-btn" style="flex: 1.5; margin: 0;">Guardar</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -423,7 +462,10 @@
                     </div>
                     <div class="input-group">
                         <label for="tx-amount">Monto</label>
-                        <input type="number" id="tx-amount" inputmode="decimal" step="any" placeholder="0.00" required>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <input type="number" id="tx-amount" inputmode="decimal" step="any" placeholder="0.00" required style="flex: 1;">
+                            <button type="button" class="btn-calc" id="tx-amount-calc" style="width: 46px; border: 2px solid var(--text-primary); background-color: var(--bg-primary); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 1.2rem; transition: all 0.1s; aspect-ratio: 1; margin: 0;" title="Abrir Calculadora"><i class="fa-solid fa-calculator"></i></button>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label for="tx-category">Categoría</label>
@@ -464,7 +506,10 @@
                     </div>
                     <div class="input-group">
                         <label for="trans-amount">Monto enviado</label>
-                        <input type="number" id="trans-amount" inputmode="decimal" step="any" placeholder="0.00" required>
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <input type="number" id="trans-amount" inputmode="decimal" step="any" placeholder="0.00" required style="flex: 1;">
+                            <button type="button" class="btn-calc" id="trans-amount-calc" style="width: 46px; border: 2px solid var(--text-primary); background-color: var(--bg-primary); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 1.2rem; transition: all 0.1s; aspect-ratio: 1; margin: 0;" title="Abrir Calculadora"><i class="fa-solid fa-calculator"></i></button>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label for="trans-fee" style="display:flex; align-items:center; gap:6px;">
@@ -475,7 +520,7 @@
                     </div>
                     <div style="display: flex; gap: 10px; margin-top: 15px;">
                         <button type="button" class="btn btn-danger hidden" id="trans-delete-btn" style="flex: 1; margin: 0; background-color: var(--action-expense); color: var(--bg-primary); border-radius: 12px 2px 10px 4px; padding: 15px; font-family: var(--font-heading); font-size: 1.3rem; letter-spacing: 1px; font-weight: 700; cursor: pointer; border: 2px solid var(--text-primary); transition: transform 0.1s;">Eliminar</button>
-                        <button type="submit" class="btn btn-save" id="trans-save-btn" style="flex: 1.5; margin: 0;">Realizar Transferencia</button>
+                        <button type="submit" class="btn btn-save" id="trans-save-btn" style="flex: 1.5; margin: 0;">Guardar</button>
                     </div>
                 </form>
             </div>
@@ -562,7 +607,7 @@
                             </div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-save" id="profile-save-btn">Guardar Perfil</button>
+                    <button type="submit" class="btn btn-save" id="profile-save-btn">Guardar</button>
                     <button type="button" class="btn btn-secondary hidden mt-10" id="profile-delete-btn" style="border-color: var(--action-expense); color: var(--action-expense); margin-top: 10px;">Eliminar Perfil</button>
                 </form>
             </div>
@@ -614,6 +659,47 @@
                 <div id="account-history-list" class="transactions-list" style="max-height: 350px; overflow-y: auto; border: 2px solid var(--text-primary); padding: 10px; border-radius: 8px; background-color: var(--bg-card); box-shadow: inset 2px 2px 4px rgba(0,0,0,0.05);">
                     <!-- Inyectado dinámicamente -->
                 </div>
+            </div>
+        </div>
+
+        <!-- Calculator Modal -->
+        <div id="calculator-modal" class="modal hidden" style="z-index: 1100;">
+            <div class="modal-content" style="max-width: 300px; padding: 15px; border-radius: 12px 4px 10px 6px;">
+                <div class="modal-header" style="margin-bottom: 10px; padding-bottom: 8px;">
+                    <h3 style="font-family: var(--font-heading); font-size: 1.15rem; margin: 0; font-weight: bold; color: var(--text-primary);">Calculadora</h3>
+                    <button id="close-calculator-modal" class="btn-icon" type="button" style="padding: 4px;"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="calc-screen" id="calc-display" style="background-color: var(--bg-primary); border: 2.5px solid var(--text-primary); border-radius: 6px; padding: 12px; font-family: 'Inconsolata'; font-size: 1.5rem; font-weight: bold; text-align: right; margin-bottom: 15px; min-height: 52px; word-break: break-all; color: var(--text-primary); box-shadow: inset 2px 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: center;">0</div>
+                <div class="calc-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                    <!-- Fila 1 -->
+                    <button type="button" class="btn btn-calc-key" data-key="C" style="background-color: var(--action-expense); color: white; font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">C</button>
+                    <button type="button" class="btn btn-calc-key" data-key="back" style="background-color: #E2E8F0; color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);"><i class="fa-solid fa-backspace"></i></button>
+                    <button type="button" class="btn btn-calc-key" data-key="/" style="background-color: #DFB574; color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">/</button>
+                    <button type="button" class="btn btn-calc-key" data-key="*" style="background-color: #DFB574; color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">*</button>
+                    
+                    <!-- Fila 2 -->
+                    <button type="button" class="btn btn-calc-key" data-key="7" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">7</button>
+                    <button type="button" class="btn btn-calc-key" data-key="8" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">8</button>
+                    <button type="button" class="btn btn-calc-key" data-key="9" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">9</button>
+                    <button type="button" class="btn btn-calc-key" data-key="-" style="background-color: #DFB574; color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">-</button>
+                    
+                    <!-- Fila 3 -->
+                    <button type="button" class="btn btn-calc-key" data-key="4" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">4</button>
+                    <button type="button" class="btn btn-calc-key" data-key="5" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">5</button>
+                    <button type="button" class="btn btn-calc-key" data-key="6" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">6</button>
+                    <button type="button" class="btn btn-calc-key" data-key="+" style="background-color: #DFB574; color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">+</button>
+                    
+                    <!-- Fila 4 -->
+                    <button type="button" class="btn btn-calc-key" data-key="1" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">1</button>
+                    <button type="button" class="btn btn-calc-key" data-key="2" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">2</button>
+                    <button type="button" class="btn btn-calc-key" data-key="3" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">3</button>
+                    <button type="button" class="btn btn-calc-key" data-key="=" style="background-color: var(--action-income); color: white; font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; grid-row: span 2; box-shadow: 2px 2px 0px var(--text-primary);">=</button>
+                    
+                    <!-- Fila 5 -->
+                    <button type="button" class="btn btn-calc-key" data-key="0" style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; grid-column: span 2; box-shadow: 2px 2px 0px var(--text-primary);">0</button>
+                    <button type="button" class="btn btn-calc-key" data-key="." style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">.</button>
+                </div>
+                <button type="button" id="calc-apply-btn" class="btn btn-save" style="margin-top: 15px; width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 6px; box-shadow: 3px 3px 0px var(--text-primary); border: 2.5px solid var(--text-primary); font-family: var(--font-heading); font-weight: bold; letter-spacing: 0.5px;">Aplicar Resultado</button>
             </div>
         </div>
     </div>
