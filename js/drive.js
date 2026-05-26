@@ -4,6 +4,7 @@ export const DriveService = {
     // Configuración persistida en localStorage
     STORAGE_KEYS: {
         CLIENT_ID: 'finance_drive_client_id',
+        API_KEY: 'finance_drive_api_key',
         AUTO_SYNC: 'finance_drive_auto_sync',
         CONNECTED: 'finance_drive_connected',
         USER_EMAIL: 'finance_drive_user_email',
@@ -22,6 +23,14 @@ export const DriveService = {
 
     setClientId(value) {
         localStorage.setItem(this.STORAGE_KEYS.CLIENT_ID, value.trim());
+    },
+
+    getApiKey() {
+        return localStorage.getItem(this.STORAGE_KEYS.API_KEY) || '';
+    },
+
+    setApiKey(value) {
+        localStorage.setItem(this.STORAGE_KEYS.API_KEY, value.trim());
     },
 
     getAutoSync() {
@@ -171,8 +180,9 @@ export const DriveService = {
      * Busca si el archivo de base de datos ya existe en la carpeta oculta appDataFolder
      */
     async searchBackupFile() {
+        const apiKey = this.getApiKey();
         const query = encodeURIComponent("name = 'finance_profiles_v2.json' and 'appDataFolder' in parents and trashed = false");
-        const url = `https://www.googleapis.com/drive/3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)`;
+        const url = `https://www.googleapis.com/drive/3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)&key=${apiKey}`;
         
         const response = await this.authenticatedFetch(url);
         if (!response.ok) throw new Error("Error buscando copias de seguridad en Google Drive.");
@@ -185,7 +195,8 @@ export const DriveService = {
      * Descarga el contenido del archivo a partir de su ID de archivo
      */
     async downloadBackupFile(fileId) {
-        const url = `https://www.googleapis.com/drive/3/files/${fileId}?alt=media`;
+        const apiKey = this.getApiKey();
+        const url = `https://www.googleapis.com/drive/3/files/${fileId}?alt=media&key=${apiKey}`;
         const response = await this.authenticatedFetch(url);
         if (!response.ok) throw new Error("Error descargando los datos de Google Drive.");
         return await response.json();
@@ -195,7 +206,8 @@ export const DriveService = {
      * Sube un archivo nuevo a la carpeta oculta appDataFolder
      */
     async createBackupFile(stateData) {
-        const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+        const apiKey = this.getApiKey();
+        const url = `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&key=${apiKey}`;
         
         const metadata = {
             name: 'finance_profiles_v2.json',
@@ -231,7 +243,8 @@ export const DriveService = {
      * Sobreescribe un archivo existente en Google Drive
      */
     async updateBackupFile(fileId, stateData) {
-        const url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`;
+        const apiKey = this.getApiKey();
+        const url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&key=${apiKey}`;
         
         const response = await this.authenticatedFetch(url, {
             method: 'PATCH',

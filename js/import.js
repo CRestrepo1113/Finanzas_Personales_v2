@@ -9,6 +9,7 @@ export const ImportService = {
         const btnCloseCloud = document.getElementById('close-cloud-modal');
         
         const inputClientId = document.getElementById('drive-client-id');
+        const inputApiKey = document.getElementById('drive-api-key');
         const checkboxAutoSync = document.getElementById('drive-auto-sync');
         
         const btnConnect = document.getElementById('btn-drive-connect');
@@ -52,6 +53,15 @@ export const ImportService = {
             });
         }
 
+        if (inputApiKey) {
+            // Cargar valor guardado al inicio
+            inputApiKey.value = DriveService.getApiKey();
+            inputApiKey.addEventListener('input', (e) => {
+                DriveService.setApiKey(e.target.value);
+                this.updateCloudUI();
+            });
+        }
+
         if (checkboxAutoSync) {
             // Cargar valor guardado al inicio
             checkboxAutoSync.checked = DriveService.getAutoSync();
@@ -64,8 +74,9 @@ export const ImportService = {
         if (btnConnect) {
             btnConnect.addEventListener('click', async () => {
                 const clientId = DriveService.getClientId();
-                if (!clientId) {
-                    alert("⚠️ ERROR: Introduce un Google OAuth Client ID antes de intentar conectarte.");
+                const apiKey = DriveService.getApiKey();
+                if (!clientId || !apiKey) {
+                    alert("⚠️ ERROR: Introduce tu Google OAuth Client ID y tu Google API Key antes de intentar conectarte.");
                     return;
                 }
                 
@@ -160,7 +171,7 @@ export const ImportService = {
         const isConnected = DriveService.isConnected();
         const email = DriveService.getUserEmail();
         const lastSynced = DriveService.getLastSynced();
-        const hasClientId = !!DriveService.getClientId();
+        const hasCredentials = !!DriveService.getClientId() && !!DriveService.getApiKey();
 
         // 1. Actualizar estado de conexión
         if (isConnected) {
@@ -193,10 +204,10 @@ export const ImportService = {
             if (btnSyncNow) btnSyncNow.classList.add('hidden');
             if (btnDisconnect) btnDisconnect.classList.add('hidden');
 
-            // Deshabilitar botón conectar si no hay client ID
+            // Deshabilitar botón conectar si no hay credenciales completas
             if (btnConnect) {
-                btnConnect.style.opacity = hasClientId ? '1' : '0.5';
-                btnConnect.style.cursor = hasClientId ? 'pointer' : 'not-allowed';
+                btnConnect.style.opacity = hasCredentials ? '1' : '0.5';
+                btnConnect.style.cursor = hasCredentials ? 'pointer' : 'not-allowed';
             }
         }
 
