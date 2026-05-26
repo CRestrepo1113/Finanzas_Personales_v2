@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="icon" type="image/png" href="icon.png">
+    <!-- Google Identity Services SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <div id="app">
@@ -24,8 +26,10 @@
                 <p class="greeting" id="profile-greeting">Cargando... <i class="fas fa-caret-down"></i></p>
             </div>
             <div class="header-actions">
-                <button class="btn-icon" id="import-csv" title="Importar Historial (CSV)"><i class="fas fa-file-import"></i></button>
-                <button class="btn-icon" id="export-csv" title="Exportar Datos (CSV)" style="margin-left: 15px;"><i class="fas fa-file-csv"></i></button>
+                <button id="btn-cloud-sync" class="cloud-sync-badge" title="Gestionar Sincronización en la Nube">
+                    <i class="fas fa-cloud"></i>
+                    <span id="cloud-sync-status-text">Sin Sincronizar</span>
+                </button>
             </div>
         </header>
 
@@ -700,6 +704,77 @@
                     <button type="button" class="btn btn-calc-key" data-key="." style="background-color: var(--bg-primary); color: var(--text-primary); font-weight: bold; padding: 12px 0; border: 2.5px solid var(--text-primary); border-radius: 6px; font-family: var(--font-heading); cursor: pointer; transition: transform 0.05s; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 2px 2px 0px var(--text-primary);">.</button>
                 </div>
                 <button type="button" id="calc-apply-btn" class="btn btn-save" style="margin-top: 15px; width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 6px; box-shadow: 3px 3px 0px var(--text-primary); border: 2.5px solid var(--text-primary); font-family: var(--font-heading); font-weight: bold; letter-spacing: 0.5px;">Aplicar Resultado</button>
+            </div>
+        </div>
+
+        <!-- ====== MODAL: SINCRONIZACIÓN NUBE ====== -->
+        <div id="cloud-sync-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 450px;">
+                <div class="modal-header">
+                    <h2 style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-cloud"></i> Sincronización Nube
+                    </h2>
+                    <button id="close-cloud-modal" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <!-- Info de Estado -->
+                <div id="cloud-sync-info-card" style="border: 2px solid var(--text-primary); background-color: var(--bg-primary); padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 4px 4px 0px var(--text-primary); display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700; font-size: 0.95rem;">Estado de Google Drive:</span>
+                        <span id="drive-connection-status" class="acc-currency" style="background-color: var(--action-expense); color: var(--bg-primary); border-color: var(--text-primary);">Desconectado</span>
+                    </div>
+                    <div id="drive-user-details" class="hidden" style="font-size: 0.85rem; color: var(--text-secondary); border-top: 1px dashed rgba(43,43,43,0.15); padding-top: 8px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-user-circle"></i> <span id="drive-user-email">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(43,43,43,0.15); padding-top: 8px;">
+                        <span style="font-weight: 700; font-size: 0.95rem;">Última sincronización:</span>
+                        <span id="drive-last-sync-time" style="font-family: var(--font-body); font-weight: 700; font-size: 0.95rem;">Nunca</span>
+                    </div>
+                </div>
+
+                <!-- Campo de Client ID -->
+                <div class="input-group">
+                    <label for="drive-client-id" style="display: flex; align-items: center; gap: 6px;">
+                        Google OAuth Client ID
+                        <i class="fas fa-info-circle" title="Necesitas tu propio Client ID de Google Cloud Console. Es gratuito y protege tu privacidad al 100%."></i>
+                    </label>
+                    <input type="text" id="drive-client-id" placeholder="12345678-abc.apps.googleusercontent.com" style="font-size: 0.85rem; font-family: var(--font-body);">
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 5px; line-height: 1.3;">
+                        ¿No tienes uno? <a href="https://console.cloud.google.com/" target="_blank" style="color: var(--action-income); font-weight: 700; text-decoration: underline;">Crea tu Client ID en Google Cloud (Gratis)</a>
+                    </p>
+                </div>
+
+                <!-- Checkbox de autosync -->
+                <div class="input-group" style="display: flex; align-items: center; gap: 10px; margin-top: 15px; margin-bottom: 20px;">
+                    <input type="checkbox" id="drive-auto-sync" style="width: 20px; height: 20px; cursor: pointer; margin: 0; flex-shrink: 0; accent-color: var(--text-primary);">
+                    <label for="drive-auto-sync" style="margin-bottom: 0; cursor: pointer; font-size: 0.9rem; font-weight: 600;">Sincronizar automáticamente en segundo plano</label>
+                </div>
+
+                <!-- Botones de Acción de Google Drive -->
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                    <button id="btn-drive-connect" class="btn btn-save" style="margin: 0; background-color: var(--action-income); border-color: var(--text-primary); color: #fff;">
+                        <i class="fab fa-google"></i> Conectar Google Drive
+                    </button>
+                    <button id="btn-drive-sync-now" class="btn btn-save hidden" style="margin: 0;">
+                        <i class="fas fa-sync-alt"></i> Sincronizar Ahora
+                    </button>
+                    <button id="btn-drive-disconnect" class="btn btn-danger hidden" style="margin: 0; padding: 12px; font-size: 1.15rem; box-shadow: 3px 3px 0px var(--text-primary);">
+                        <i class="fas fa-sign-out-alt"></i> Desconectar Cuenta
+                    </button>
+                </div>
+
+                <!-- Copias de seguridad locales (CSV) -->
+                <div style="margin-top: 30px; border-top: 2px solid var(--text-primary); padding-top: 18px;">
+                    <h4 style="font-family: var(--font-heading); font-size: 1.2rem; margin-bottom: 12px; font-weight: 700;">Respaldos Locales Alternativos</h4>
+                    <div style="display: flex; gap: 12px;">
+                        <button id="btn-local-import" class="btn-secondary" style="flex: 1; padding: 10px; font-size: 0.95rem; border-style: solid; border-width: 2px; cursor: pointer;">
+                            <i class="fas fa-file-import"></i> Importar CSV
+                        </button>
+                        <button id="btn-local-export" class="btn-secondary" style="flex: 1; padding: 10px; font-size: 0.95rem; border-style: solid; border-width: 2px; cursor: pointer;">
+                            <i class="fas fa-file-csv"></i> Exportar CSV
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

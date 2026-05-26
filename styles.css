@@ -429,3 +429,46 @@ input[type=number] {
     box-shadow: 1px 1px 0px var(--text-primary) !important;
 }
 
+/* Estilos de Sincronización en la Nube (Neo-Brutalistas) */
+.cloud-sync-badge {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    background-color: var(--bg-card);
+    border: 2px solid var(--text-primary);
+    border-radius: 12px 3px 10px 4px;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    cursor: pointer;
+    box-shadow: 2px 2px 0px var(--text-primary);
+    transition: transform 0.1s, box-shadow 0.1s, background-color 0.2s;
+    outline: none;
+}
+.cloud-sync-badge:hover {
+    background-color: #E2CA64;
+}
+.cloud-sync-badge:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0px var(--text-primary);
+}
+.cloud-sync-badge i {
+    font-size: 0.95rem;
+    transition: transform 0.3s ease;
+}
+.cloud-sync-badge.connected {
+    background-color: #A5BCA6;
+}
+.cloud-sync-badge.connected:hover {
+    background-color: #92AA93;
+}
+.cloud-sync-badge.syncing i {
+    animation: cloud-spin 1.5s linear infinite;
+}
+@keyframes cloud-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+

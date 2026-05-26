@@ -10,6 +10,10 @@ class StateManager {
 
     async init() {
         this.profilesState = await StorageService.loadProfiles();
+        if (!this.profilesState.lastModified) {
+            this.profilesState.lastModified = new Date().toISOString();
+            await StorageService.saveProfiles(this.profilesState);
+        }
         this.activeProfile = this.profilesState.profiles.find(p => String(p.id) === String(this.profilesState.activeProfileId));
         this.db = this.activeProfile.db;
 
@@ -58,7 +62,20 @@ class StateManager {
     }
 
     async save() {
+        if (this.profilesState) {
+            this.profilesState.lastModified = new Date().toISOString();
+        }
         await StorageService.saveProfiles(this.profilesState);
+        
+        // Sincronización automática en segundo plano (debounce de 5 segundos)
+        if (window.DriveService && window.DriveService.isConnected() && window.DriveService.getAutoSync()) {
+            if (this.syncTimeout) clearTimeout(this.syncTimeout);
+            this.syncTimeout = setTimeout(() => {
+                window.DriveService.sync(false).catch(err => {
+                    console.error("Fallo en sincronización automática tras cambios:", err);
+                });
+            }, 5000);
+        }
     }
 
     async importData(profiles) {

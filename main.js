@@ -6,6 +6,7 @@ import { FormService } from './js/forms.js';
 import { CurrencyService } from './js/currency.js';
 import { ZBBService } from './js/zbb.js';
 import { CalculatorService } from './js/calculator.js';
+import { DriveService } from './js/drive.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Finanzas Personales v2: Inicializando...');
@@ -26,6 +27,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Configurar navegación
     setupNavigation();
+
+    // 3. Sincronización automática silenciosa con Google Drive si corresponde
+    if (DriveService.isConnected() && DriveService.getAutoSync()) {
+        console.log("Drive: Sincronización automática activa al inicio...");
+        setTimeout(() => {
+            DriveService.sync(false).catch(err => {
+                console.error("Fallo en la sincronización automática inicial:", err);
+            });
+        }, 2000);
+    }
 });
 
 // Exponer FormService y CurrencyService globalmente para la UI y servicios cruzados
