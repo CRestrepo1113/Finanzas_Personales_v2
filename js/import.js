@@ -308,8 +308,11 @@ export const ImportService = {
     },
 
     async parseCSV(text) {
-        if (!text.includes('### BLOQUE_CUENTAS ###')) {
-            alert("Error: El archivo no tiene el formato de backup correcto.");
+        // Eliminar BOM (Byte Order Mark) si existe — se añade automáticamente al exportar
+        text = text.replace(/^\uFEFF/, '');
+
+        if (!text.includes('### BLOQUE_CUENTAS ###') && !text.includes('###BLOQUE_CUENTAS###')) {
+            alert("Error: El archivo no tiene el formato de backup correcto. Asegúrate de exportar desde esta misma aplicación usando el botón 'Exportar CSV'.");
             return;
         }
 
@@ -360,7 +363,10 @@ export const ImportService = {
             const db = currentProfile?.db;
             if (!db) continue;
 
-            const parseId = (id) => isNaN(Number(id)) ? id : Number(id);
+            const parseId = (id) => {
+                if (!id || id === '' || id === 'undefined') return null;
+                return isNaN(Number(id)) ? id : Number(id);
+            };
             const parseVal = (v) => parseFloat(String(v || '0').replace(',', '.')) || 0;
 
             switch (mode) {
@@ -371,16 +377,16 @@ export const ImportService = {
                     }
                     break;
                 case '### BLOQUE_CUENTAS ###':
-                    if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_CUENTAS ###') {
+                    if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_CUENTAS ###' && cols[0] !== '') {
                         db.accounts.push({
                             id: parseId(cols[0]), name: cols[1], currency: cols[2],
-                            balance: parseVal(cols[3]), type: cols[4], color: cols[5],
+                            balance: parseVal(cols[3]), type: cols[4], color: cols[5] || '',
                             budget: cols[6] !== undefined ? parseVal(cols[6]) : 0
                         });
                     }
                     break;
                 case '### BLOQUE_CATEGORIAS ###':
-                    if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_CATEGORIAS ###') {
+                    if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_CATEGORIAS ###' && cols[0] !== '') {
                         db.categories.push({
                             id: parseId(cols[0]), name: cols[1], type: cols[2],
                             budget: parseVal(cols[3]), visual_color: cols[4],
@@ -389,7 +395,7 @@ export const ImportService = {
                     }
                     break;
                 case '### BLOQUE_METAS ###':
-                    if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_METAS ###') {
+                    if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_METAS ###' && cols[0] !== '') {
                         db.goals.push({
                             id: parseId(cols[0]), 
                             name: cols[1], 
@@ -402,7 +408,7 @@ export const ImportService = {
                     }
                     break;
                 case '### BLOQUE_TRANSACCIONES ###':
-                    if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_TRANSACCIONES ###') {
+                    if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_TRANSACCIONES ###' && cols[0] !== '') {
                         const amount = parseVal(cols[3]);
                         const amountExtracted = parseVal(cols[4]);
                         if (amount !== 0 || amountExtracted !== 0) {
@@ -417,9 +423,11 @@ export const ImportService = {
                                 to_account_id: parseId(cols[7]),
                                 category_id: parseId(cols[8]), 
                                 account_id: parseId(cols[9]), 
-                                notes: cols[10],
-                                foreign_account_name: cols[11],
-                                is_cross_profile: cols[12] === 'true'
+                                notes: cols[10] || '',
+                                foreign_account_name: cols[11] || '',
+                                is_cross_profile: cols[12] === 'true',
+                                cross_link_id: cols[13] || null,
+                                target_profile_id: cols[14] || null
                             });
                         }
                     }

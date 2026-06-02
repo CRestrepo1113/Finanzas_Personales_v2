@@ -182,7 +182,7 @@ export const DriveService = {
     async searchBackupFile() {
         const apiKey = this.getApiKey();
         const query = encodeURIComponent("name = 'finance_profiles_v2.json' and 'appDataFolder' in parents and trashed = false");
-        const url = `https://www.googleapis.com/drive/3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)&key=${apiKey}`;
+        const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${query}&fields=files(id,name,modifiedTime)&key=${apiKey}`;
         
         const response = await this.authenticatedFetch(url);
         if (!response.ok) throw new Error("Error buscando copias de seguridad en Google Drive.");
@@ -196,7 +196,7 @@ export const DriveService = {
      */
     async downloadBackupFile(fileId) {
         const apiKey = this.getApiKey();
-        const url = `https://www.googleapis.com/drive/3/files/${fileId}?alt=media&key=${apiKey}`;
+        const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
         const response = await this.authenticatedFetch(url);
         if (!response.ok) throw new Error("Error descargando los datos de Google Drive.");
         return await response.json();
