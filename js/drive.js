@@ -105,9 +105,10 @@ export const DriveService = {
     },
 
     /**
-     * Pide permiso al usuario abriendo el popup oficial de Google
+     * Pide permiso al usuario abriendo el popup oficial de Google.
+     * @param {boolean} isReconnect - Si es true, usa prompt:'' (sin forzar selección de cuenta)
      */
-    async requestToken() {
+    async requestToken(isReconnect = false) {
         await this.initGis();
         return new Promise((resolve, reject) => {
             this.onAuthSuccessCallback = async (token) => {
@@ -119,7 +120,10 @@ export const DriveService = {
                     reject(e);
                 }
             };
-            this.tokenClient.requestAccessToken({ prompt: 'consent' });
+            // En reconexión (ya había cuenta vinculada) no forzar selección de cuenta.
+            // En primer login siempre mostrar el selector con 'consent'.
+            const promptMode = isReconnect ? '' : 'consent';
+            this.tokenClient.requestAccessToken({ prompt: promptMode });
         });
     },
 
@@ -271,12 +275,15 @@ export const DriveService = {
 
             // Asegurar que tenemos un token
             if (!this.accessToken) {
-                if (this.isConnected()) {
-                    // Si el usuario ya estaba conectado previamente en otras sesiones, intentar reconexión silenciosa o mediante popup rápido
-                    await this.requestToken();
+                if (force) {
+                    // Acción manual del usuario: pedir token (primer login o reconexión explícita)
+                    const isReconnect = this.isConnected();
+                    await this.requestToken(isReconnect);
                 } else {
-                    if (force) await this.requestToken();
-                    else return false;
+                    // Sync en background: si no hay token activo en sesión, abortar silenciosamente.
+                    // El token se renueva la próxima vez que el usuario interactúe manualmente.
+                    console.log('[Drive] Sync en background omitido: sin token de sesión activo.');
+                    return false;
                 }
             }
 

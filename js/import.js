@@ -134,11 +134,16 @@ export const ImportService = {
         if (btnLocalImport) {
             const fileInput = document.createElement('input');
             fileInput.type = 'file';
-            fileInput.accept = '.csv';
+            // Ampliado para compatibilidad con Android: algunos navegadores móviles
+            // ignoran '.csv' y requieren el MIME type explícito
+            fileInput.accept = '.csv,text/csv,text/plain,application/octet-stream';
             fileInput.style.display = 'none';
             document.body.appendChild(fileInput);
 
-            btnLocalImport.addEventListener('click', () => fileInput.click());
+            btnLocalImport.addEventListener('click', () => {
+                fileInput.value = ''; // Reset para permitir seleccionar el mismo archivo
+                fileInput.click();
+            });
             fileInput.addEventListener('change', (e) => this.handleLocalFile(e));
         }
 
@@ -246,12 +251,19 @@ export const ImportService = {
         const file = event.target.files[0];
         if (!file) return;
 
+        console.log(`[CSV Import] Archivo seleccionado: "${file.name}" | Tipo: ${file.type || 'desconocido'} | Tamaño: ${file.size} bytes`);
+
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const text = e.target.result;
+            // Forzar decodificación UTF-8 explícita para garantizar manejo correcto del BOM
+            const buffer = e.target.result;
+            const decoder = new TextDecoder('utf-8');
+            const text = decoder.decode(buffer);
+            console.log(`[CSV Import] Primeros 100 chars: ${JSON.stringify(text.substring(0, 100))}`);
             await this.parseCSV(text);
         };
-        reader.readAsText(file);
+        // Leer como ArrayBuffer para poder decodificar con TextDecoder
+        reader.readAsArrayBuffer(file);
     },
 
     exportCSV() {
