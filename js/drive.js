@@ -1,6 +1,10 @@
 import { State } from './state.js';
 
 export const DriveService = {
+    // --- Credenciales integradas (hardcodeadas para uso inmediato sin configuración) ---
+    DEFAULT_CLIENT_ID: '1074791425618-vhcsld4j97ibgbcg2egvqsbud83eco7h.apps.googleusercontent.com',
+    DEFAULT_API_KEY: 'AIzaSyAdpbJGFiRJaxRnEJQG-2MIYcZfAAnUK-Y',
+
     // Configuración persistida en localStorage
     STORAGE_KEYS: {
         CLIENT_ID: 'finance_drive_client_id',
@@ -16,21 +20,27 @@ export const DriveService = {
     tokenClient: null,
     isInitializingGis: false,
 
-    // Obtener valores guardados
+    // Obtener valores guardados (localStorage tiene prioridad; si no hay, usa el valor hardcodeado)
     getClientId() {
-        return localStorage.getItem(this.STORAGE_KEYS.CLIENT_ID) || '';
+        return localStorage.getItem(this.STORAGE_KEYS.CLIENT_ID) || this.DEFAULT_CLIENT_ID;
     },
 
     setClientId(value) {
-        localStorage.setItem(this.STORAGE_KEYS.CLIENT_ID, value.trim());
+        // Solo guardar en localStorage si es diferente al valor por defecto
+        if (value.trim() && value.trim() !== this.DEFAULT_CLIENT_ID) {
+            localStorage.setItem(this.STORAGE_KEYS.CLIENT_ID, value.trim());
+        }
     },
 
     getApiKey() {
-        return localStorage.getItem(this.STORAGE_KEYS.API_KEY) || '';
+        return localStorage.getItem(this.STORAGE_KEYS.API_KEY) || this.DEFAULT_API_KEY;
     },
 
     setApiKey(value) {
-        localStorage.setItem(this.STORAGE_KEYS.API_KEY, value.trim());
+        // Solo guardar en localStorage si es diferente al valor por defecto
+        if (value.trim() && value.trim() !== this.DEFAULT_API_KEY) {
+            localStorage.setItem(this.STORAGE_KEYS.API_KEY, value.trim());
+        }
     },
 
     getAutoSync() {

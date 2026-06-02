@@ -8,13 +8,11 @@ export const ImportService = {
         const modalCloud = document.getElementById('cloud-sync-modal');
         const btnCloseCloud = document.getElementById('close-cloud-modal');
         
-        const inputClientId = document.getElementById('drive-client-id');
-        const inputApiKey = document.getElementById('drive-api-key');
-        const checkboxAutoSync = document.getElementById('drive-auto-sync');
-        
         const btnConnect = document.getElementById('btn-drive-connect');
         const btnSyncNow = document.getElementById('btn-drive-sync-now');
         const btnDisconnect = document.getElementById('btn-drive-disconnect');
+        
+        const checkboxAutoSync = document.getElementById('drive-auto-sync');
         
         const btnLocalImport = document.getElementById('btn-local-import');
         const btnLocalExport = document.getElementById('btn-local-export');
@@ -44,26 +42,7 @@ export const ImportService = {
         }
 
         // 2. Control de Ajustes en el modal
-        if (inputClientId) {
-            // Cargar valor guardado al inicio
-            inputClientId.value = DriveService.getClientId();
-            inputClientId.addEventListener('input', (e) => {
-                DriveService.setClientId(e.target.value);
-                this.updateCloudUI();
-            });
-        }
-
-        if (inputApiKey) {
-            // Cargar valor guardado al inicio
-            inputApiKey.value = DriveService.getApiKey();
-            inputApiKey.addEventListener('input', (e) => {
-                DriveService.setApiKey(e.target.value);
-                this.updateCloudUI();
-            });
-        }
-
         if (checkboxAutoSync) {
-            // Cargar valor guardado al inicio
             checkboxAutoSync.checked = DriveService.getAutoSync();
             checkboxAutoSync.addEventListener('change', (e) => {
                 DriveService.setAutoSync(e.target.checked);
@@ -73,13 +52,6 @@ export const ImportService = {
         // 3. Eventos de botones de Google Drive
         if (btnConnect) {
             btnConnect.addEventListener('click', async () => {
-                const clientId = DriveService.getClientId();
-                const apiKey = DriveService.getApiKey();
-                if (!clientId || !apiKey) {
-                    alert("⚠️ ERROR: Introduce tu Google OAuth Client ID y tu Google API Key antes de intentar conectarte.");
-                    return;
-                }
-                
                 try {
                     btnConnect.disabled = true;
                     btnConnect.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Conectando...';
@@ -176,7 +148,7 @@ export const ImportService = {
         const isConnected = DriveService.isConnected();
         const email = DriveService.getUserEmail();
         const lastSynced = DriveService.getLastSynced();
-        const hasCredentials = !!DriveService.getClientId() && !!DriveService.getApiKey();
+        const hasCredentials = true; // Siempre disponible: credenciales integradas en el código
 
         // 1. Actualizar estado de conexión
         if (isConnected) {
