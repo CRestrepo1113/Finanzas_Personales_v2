@@ -1,7 +1,7 @@
 export const INITIAL_DB = {
     settings: {
         baseCurrency: 'USD',
-        exchangeRates: { 'USD': 1, 'EUR': 0.92, 'COP': 3900, 'RUB': 90 }
+        exchangeRates: { 'USD': 1, 'EUR': 0.92, 'COP': 3900, 'RUB': 90, 'HNL': 24.5 }
     },
     accounts: [
         { id: 1, name: 'Cuenta de Ahorros', currency: 'USD', balance: 0.00, type: 'savings', color: '#A5BCA6' },

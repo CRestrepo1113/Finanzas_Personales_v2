@@ -45,6 +45,14 @@ class StateManager {
             });
         }
 
+        // Migración para añadir HNL a exchangeRates si no existe
+        if (this.db.settings && this.db.settings.exchangeRates) {
+            if (!this.db.settings.exchangeRates.hasOwnProperty('HNL')) {
+                this.db.settings.exchangeRates['HNL'] = 24.5;
+                migrated = true;
+            }
+        }
+
         if (migrated) {
             this.save();
         }

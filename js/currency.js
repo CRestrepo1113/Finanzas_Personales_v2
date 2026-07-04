@@ -1,7 +1,7 @@
 import { State } from './state.js';
 
 export const CurrencyService = {
-    // Usaremos ExchangeRate-API (gratuita, libre y soporta COP/RUB)
+    // Usaremos ExchangeRate-API (gratuita, libre y soporta COP/RUB/HNL)
     API_URL: 'https://open.er-api.com/v6/latest',
 
     async updateRates() {
@@ -22,7 +22,7 @@ export const CurrencyService = {
             const newRates = { ...State.db.settings.exchangeRates };
             
             Object.keys(data.rates).forEach(currency => {
-                if (newRates.hasOwnProperty(currency) || ['EUR', 'USD', 'COP', 'RUB'].includes(currency)) {
+                if (newRates.hasOwnProperty(currency) || ['EUR', 'USD', 'COP', 'RUB', 'HNL'].includes(currency)) {
                     const rateVal = parseFloat(data.rates[currency]);
                     if (rateVal && rateVal > 0) {
                         newRates[currency] = rateVal;
