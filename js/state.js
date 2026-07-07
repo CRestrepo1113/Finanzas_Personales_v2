@@ -32,6 +32,15 @@ class StateManager {
                     acc.budget = 0;
                     migrated = true;
                 }
+                
+                // Redondear balance a 2 decimales
+                if (typeof acc.balance === 'number') {
+                    const rounded = Math.round(acc.balance * 100) / 100;
+                    if (rounded !== acc.balance) {
+                        acc.balance = rounded;
+                        migrated = true;
+                    }
+                }
             });
         }
 
@@ -65,6 +74,13 @@ class StateManager {
     }
 
     notify() {
+        if (this.db && this.db.accounts) {
+            this.db.accounts.forEach(acc => {
+                if (typeof acc.balance === 'number') {
+                    acc.balance = Math.round(acc.balance * 100) / 100;
+                }
+            });
+        }
         this.listeners.forEach(callback => callback(this.db));
         this.save();
     }

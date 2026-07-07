@@ -516,6 +516,16 @@
                             <button type="button" class="btn-calc" id="trans-amount-calc" style="width: 46px; border: 2px solid var(--text-primary); background-color: var(--bg-primary); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); font-size: 1.2rem; transition: all 0.1s; aspect-ratio: 1; margin: 0;" title="Abrir Calculadora"><i class="fa-solid fa-calculator"></i></button>
                         </div>
                     </div>
+                    <div id="trans-conversion-group" class="hidden" style="display: flex; gap: 12px; margin-bottom: 15px;">
+                        <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                            <label id="trans-rate-label" for="trans-rate">Tasa de cambio</label>
+                            <input type="number" id="trans-rate" inputmode="decimal" step="any" placeholder="1.00">
+                        </div>
+                        <div class="input-group" style="flex: 1; margin-bottom: 0;">
+                            <label id="trans-amount-received-label" for="trans-amount-received">Monto recibido</label>
+                            <input type="number" id="trans-amount-received" inputmode="decimal" step="any" placeholder="0.00">
+                        </div>
+                    </div>
                     <div class="input-group">
                         <label for="trans-fee" style="display:flex; align-items:center; gap:6px;">
                             Comisión / Impuesto

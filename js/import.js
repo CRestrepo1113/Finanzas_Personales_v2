@@ -364,7 +364,7 @@ export const ImportService = {
                     if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_CUENTAS ###' && cols[0] !== '') {
                         db.accounts.push({
                             id: parseId(cols[0]), name: cols[1], currency: cols[2],
-                            balance: parseVal(cols[3]), type: cols[4], color: cols[5] || '',
+                            balance: Math.round(parseVal(cols[3]) * 100) / 100, type: cols[4], color: cols[5] || '',
                             budget: cols[6] !== undefined ? parseVal(cols[6]) : 0
                         });
                     }

@@ -99,6 +99,50 @@ export const FormService = {
             if (form) form.onsubmit = handler;
         });
 
+        // Reactividad en formulario de transferencia
+        const transFrom = document.getElementById('trans-from');
+        const transTo = document.getElementById('trans-to');
+        const transAmount = document.getElementById('trans-amount');
+        const transRate = document.getElementById('trans-rate');
+        const transAmountReceived = document.getElementById('trans-amount-received');
+
+        const updateConversionOnAccountChange = () => {
+            this.updateTransferConversionVisibility(true);
+        };
+
+        if (transFrom) transFrom.addEventListener('change', updateConversionOnAccountChange);
+        if (transTo) transTo.addEventListener('change', updateConversionOnAccountChange);
+
+        if (transAmount) {
+            transAmount.addEventListener('input', () => {
+                const amount = parseFloat(transAmount.value) || 0;
+                const rate = parseFloat(transRate.value) || 0;
+                if (transAmountReceived) {
+                    transAmountReceived.value = (Math.round(amount * rate * 100) / 100).toFixed(2);
+                }
+            });
+        }
+
+        if (transRate) {
+            transRate.addEventListener('input', () => {
+                const amount = parseFloat(transAmount.value) || 0;
+                const rate = parseFloat(transRate.value) || 0;
+                if (transAmountReceived) {
+                    transAmountReceived.value = (Math.round(amount * rate * 100) / 100).toFixed(2);
+                }
+            });
+        }
+
+        if (transAmountReceived) {
+            transAmountReceived.addEventListener('input', () => {
+                const amount = parseFloat(transAmount.value) || 0;
+                const received = parseFloat(transAmountReceived.value) || 0;
+                if (amount > 0 && transRate) {
+                    transRate.value = (received / amount).toFixed(6).replace(/\.?0+$/, '');
+                }
+            });
+        }
+
         // Inicializar selectores visuales (Colores e Iconos)
         this.setupVisualSelectors();
     },
@@ -205,6 +249,48 @@ export const FormService = {
         modal.classList.remove('hidden');
     },
 
+    updateTransferConversionVisibility(resetRate = false) {
+        const fromId = document.getElementById('trans-from').value;
+        const toId = document.getElementById('trans-to').value;
+        const conversionGroup = document.getElementById('trans-conversion-group');
+        
+        if (!fromId || !toId || fromId === toId) {
+            if (conversionGroup) conversionGroup.style.display = 'none';
+            return;
+        }
+
+        const fromAccount = State.db.accounts.find(a => String(a.id) === String(fromId));
+        const toAccount = State.db.accounts.find(a => String(a.id) === String(toId));
+
+        if (fromAccount && toAccount && fromAccount.currency !== toAccount.currency) {
+            if (conversionGroup) conversionGroup.style.display = 'flex';
+            
+            const rateLabel = document.getElementById('trans-rate-label');
+            const receivedLabel = document.getElementById('trans-amount-received-label');
+            if (rateLabel) rateLabel.textContent = `Tasa (${fromAccount.currency} ➜ ${toAccount.currency})`;
+            if (receivedLabel) receivedLabel.textContent = `Monto recibido (${toAccount.currency})`;
+
+            const rates = State.db.settings.exchangeRates || {};
+            const rateFrom = rates[fromAccount.currency] || 1;
+            const rateTo = rates[toAccount.currency] || 1;
+            const defaultRate = rateTo / rateFrom;
+
+            const transRate = document.getElementById('trans-rate');
+            const transAmount = document.getElementById('trans-amount');
+            const transAmountReceived = document.getElementById('trans-amount-received');
+
+            if (resetRate || !transRate.value) {
+                transRate.value = defaultRate.toFixed(6).replace(/\.?0+$/, '');
+            }
+
+            const amount = parseFloat(transAmount.value) || 0;
+            const rate = parseFloat(transRate.value) || defaultRate;
+            transAmountReceived.value = (Math.round(amount * rate * 100) / 100).toFixed(2);
+        } else {
+            if (conversionGroup) conversionGroup.style.display = 'none';
+        }
+    },
+
     openTransferModal(fromId = null, toId = null) {
         const modal = document.getElementById('transfer-modal');
         const title = document.getElementById('transfer-modal-title');
@@ -227,9 +313,18 @@ export const FormService = {
 
         document.getElementById('trans-date').value = this.getLocalDateString();
         document.getElementById('trans-amount').value = '';
+
+        // Limpiar campos de conversión
+        document.getElementById('trans-rate').value = '';
+        document.getElementById('trans-amount-received').value = '';
+
         // Resetear comisión a 0 cada vez que se abre el modal
         const feeInput = document.getElementById('trans-fee');
         if (feeInput) feeInput.value = '0';
+
+        // Actualizar la visibilidad y calcular los valores iniciales de conversión
+        this.updateTransferConversionVisibility(true);
+
         modal.classList.remove('hidden');
     },
 
@@ -257,8 +352,30 @@ export const FormService = {
             document.getElementById('trans-date').value = tx.date;
             fromSelect.value = tx.from_account_id;
             toSelect.value = tx.to_account_id;
-            document.getElementById('trans-amount').value = tx.amount_extracted - (tx.fee || 0);
-            document.getElementById('trans-fee').value = tx.fee || 0;
+            
+            const fee = tx.fee || 0;
+            const amountSent = tx.amount_extracted - fee;
+            document.getElementById('trans-amount').value = amountSent;
+            document.getElementById('trans-fee').value = fee;
+
+            // Rellenar tasa y monto recibido
+            const transRate = document.getElementById('trans-rate');
+            const transAmountReceived = document.getElementById('trans-amount-received');
+            
+            let rate = tx.exchange_rate;
+            if (!rate && amountSent > 0) {
+                rate = tx.amount_received / amountSent;
+            }
+            if (rate) {
+                transRate.value = rate.toFixed(6).replace(/\.?0+$/, '');
+            } else {
+                transRate.value = '';
+            }
+            
+            transAmountReceived.value = tx.amount_received ? tx.amount_received.toFixed(2) : '';
+
+            // Mostrar u ocultar el grupo de conversión
+            this.updateTransferConversionVisibility(false);
 
             modal.classList.remove('hidden');
         } else {
@@ -303,7 +420,7 @@ export const FormService = {
             form['acc-name'].value = acc.name;
             form['acc-currency'].value = acc.currency;
             form['acc-type'].value = acc.type;
-            form['acc-balance'].value = acc.balance;
+            form['acc-balance'].value = typeof acc.balance === 'number' ? Math.round(acc.balance * 100) / 100 : acc.balance;
             form['acc-color'].value = acc.color;
             selectedColor = acc.color;
         } else {
@@ -484,14 +601,19 @@ export const FormService = {
         
         if (!fromAccount || !toAccount) return alert("Error al encontrar las cuentas");
         
-        const rates = State.db.settings.exchangeRates || {};
-        const rateFrom = rates[fromAccount.currency] || 1;
-        const rateTo = rates[toAccount.currency] || 1;
+        let amountReceived = amount;
+        let exchangeRate = 1;
         
-        // El destino recibe solo el monto enviado (sin comisión), convertido a su divisa
-        const amountReceived = amount * (rateTo / rateFrom);
+        if (fromAccount.currency !== toAccount.currency) {
+            const inputRate = parseFloat(document.getElementById('trans-rate').value);
+            const inputReceived = parseFloat(document.getElementById('trans-amount-received').value);
+            
+            exchangeRate = !isNaN(inputRate) ? inputRate : 1;
+            amountReceived = !isNaN(inputReceived) ? Math.round(inputReceived * 100) / 100 : (Math.round(amount * exchangeRate * 100) / 100);
+        }
+        
         // El origen pierde: monto enviado + comisión (ambos en la divisa del origen)
-        const totalExtracted = amount + fee;
+        const totalExtracted = Math.round((amount + fee) * 100) / 100;
         
         const txData = {
             type: 'transfer', 
@@ -501,10 +623,16 @@ export const FormService = {
             amount_extracted: totalExtracted,  // Lo que sale del origen (incluye comisión)
             amount_received: amountReceived,    // Lo que llega al destino (sin comisión)
             fee: fee,                           // Guardamos la comisión para auditoría
-            notes: fee > 0 
-                ? `Transferencia interna (comisión: ${fee.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${fromAccount.currency})`
+            exchange_rate: exchangeRate,        // Guardamos la tasa de cambio utilizada
+            notes: fromAccount.currency !== toAccount.currency 
+                ? `Transferencia (Tasa: 1 ${fromAccount.currency} = ${exchangeRate.toFixed(4).replace(/\.?0+$/, '')} ${toAccount.currency})`
                 : 'Transferencia interna'
         };
+        
+        // Si hay comisión, añadirla a las notas
+        if (fee > 0) {
+            txData.notes += ` &bull; Comisión: ${fee.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${fromAccount.currency}`;
+        }
 
         if (transId) {
             State.updateTransaction(transId, txData);
@@ -569,7 +697,8 @@ export const FormService = {
     handleAccountSubmit(e) {
         e.preventDefault();
         const f = e.target;
-        const data = { name: f['acc-name'].value, currency: f['acc-currency'].value, type: f['acc-type'].value, balance: parseFloat(f['acc-balance'].value), color: f['acc-color'].value };
+        const inputBalance = parseFloat(f['acc-balance'].value) || 0;
+        const data = { name: f['acc-name'].value, currency: f['acc-currency'].value, type: f['acc-type'].value, balance: Math.round(inputBalance * 100) / 100, color: f['acc-color'].value };
         if (f['acc-id'].value) State.updateAccount(f['acc-id'].value, data);
         else State.addAccount(data);
         this.hideModal('account-modal');
