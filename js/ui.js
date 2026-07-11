@@ -387,8 +387,39 @@ export const UI = {
             const itemsHtml = txs.map(tx => {
                 // Caso especial para Transferencias
                 if (tx.type === 'transfer') {
-                    const fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id)) || { name: 'Cuenta Origen', currency: '' };
-                    const toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id)) || { name: 'Cuenta Destino', currency: '' };
+                    const isInterProfile = !!(tx.to_profile_id || tx.from_profile_id);
+
+                    let fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
+                    if (fromAcc) {
+                        if (isInterProfile && State && State.activeProfile) {
+                            fromAcc = { ...fromAcc, name: `${fromAcc.name} (${State.activeProfile.name})` };
+                        }
+                    } else if (State && State.profilesState) {
+                        for (const p of State.profilesState.profiles) {
+                            const found = p.db.accounts.find(a => String(a.id) === String(tx.from_account_id));
+                            if (found) {
+                                fromAcc = { ...found, name: `${found.name} (${p.name})` };
+                                break;
+                            }
+                        }
+                    }
+                    fromAcc = fromAcc || { name: 'Cuenta Origen', currency: '' };
+
+                    let toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                    if (toAcc) {
+                        if (isInterProfile && State && State.activeProfile) {
+                            toAcc = { ...toAcc, name: `${toAcc.name} (${State.activeProfile.name})` };
+                        }
+                    } else if (State && State.profilesState) {
+                        for (const p of State.profilesState.profiles) {
+                            const found = p.db.accounts.find(a => String(a.id) === String(tx.to_account_id));
+                            if (found) {
+                                toAcc = { ...found, name: `${found.name} (${p.name})` };
+                                break;
+                            }
+                        }
+                    }
+                    toAcc = toAcc || { name: 'Cuenta Destino', currency: '' };
 
                     return `
                         <div class="transaction-item edit-tx-trigger" data-id="${tx.id}" style="border-left: 4px solid var(--accent-gold); cursor: pointer;">
@@ -402,7 +433,7 @@ export const UI = {
                                     ${parseFloat(tx.fee || 0) > 0 ? `<span style="font-size:0.75rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
                                 </div>
                             </div>
-                            <div style="text-align: right; line-height: 1.2;">
+                            <div style="text-align: right; line-height: 1.2; flex-shrink: 0; margin-left: 10px;">
                                 <span class="amount-expense" style="font-size: 0.95rem; font-weight: 700;">-${parseFloat(tx.amount_extracted || 0).toFixed(2)} ${fromAcc.currency}</span>
                                 <br>
                                 <span class="amount-income" style="font-size: 0.85rem; font-weight: 700; opacity: 0.8;">+${parseFloat(tx.amount_received || 0).toFixed(2)} ${toAcc.currency}</span>
@@ -427,7 +458,10 @@ export const UI = {
                             </div>
                             <div class="t-text">
                                 <span class="t-name">${cat.name}</span>
-                                <span class="t-date"><strong style="color: var(--text-primary); font-weight: 700;">${acc.name}</strong>${tx.notes ? ' &bull; ' + tx.notes : ''}</span>
+                                <span class="t-date" style="display: flex; flex-direction: column; gap: 2px;">
+                                    <strong style="color: var(--text-primary); font-weight: 700;">${acc.name}</strong>
+                                    ${tx.notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500;">${tx.notes}</span>` : ''}
+                                </span>
                             </div>
                         </div>
                         <div class="t-amount ${amountClass}">${amountSign}$${parseFloat(tx.amount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
@@ -820,8 +854,39 @@ export const UI = {
             const itemsHtml = txs.map(tx => {
                 // Caso especial para Transferencias
                 if (tx.type === 'transfer') {
-                    const fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id)) || { name: 'Cuenta Origen', currency: '' };
-                    const toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id)) || { name: 'Cuenta Destino', currency: '' };
+                    const isInterProfile = !!(tx.to_profile_id || tx.from_profile_id);
+
+                    let fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
+                    if (fromAcc) {
+                        if (isInterProfile && State && State.activeProfile) {
+                            fromAcc = { ...fromAcc, name: `${fromAcc.name} (${State.activeProfile.name})` };
+                        }
+                    } else if (State && State.profilesState) {
+                        for (const p of State.profilesState.profiles) {
+                            const found = p.db.accounts.find(a => String(a.id) === String(tx.from_account_id));
+                            if (found) {
+                                fromAcc = { ...found, name: `${found.name} (${p.name})` };
+                                break;
+                            }
+                        }
+                    }
+                    fromAcc = fromAcc || { name: 'Cuenta Origen', currency: '' };
+
+                    let toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                    if (toAcc) {
+                        if (isInterProfile && State && State.activeProfile) {
+                            toAcc = { ...toAcc, name: `${toAcc.name} (${State.activeProfile.name})` };
+                        }
+                    } else if (State && State.profilesState) {
+                        for (const p of State.profilesState.profiles) {
+                            const found = p.db.accounts.find(a => String(a.id) === String(tx.to_account_id));
+                            if (found) {
+                                toAcc = { ...found, name: `${found.name} (${p.name})` };
+                                break;
+                            }
+                        }
+                    }
+                    toAcc = toAcc || { name: 'Cuenta Destino', currency: '' };
                     
                     const isOutgoing = String(tx.from_account_id) === String(accId);
 

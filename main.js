@@ -37,11 +37,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }, 2000);
     }
+
+    // 4. Registrar Service Worker para soporte offline PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('SW: Service Worker registrado con éxito en scope:', reg.scope))
+            .catch(err => console.error('SW: Error al registrar el Service Worker:', err));
+    }
 });
 
 // Exponer FormService y CurrencyService globalmente para la UI y servicios cruzados
 window.FormService = FormService;
 window.CurrencyService = CurrencyService;
+window.State = State;
 
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');

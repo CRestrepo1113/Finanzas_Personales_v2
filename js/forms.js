@@ -251,16 +251,33 @@ export const FormService = {
 
     updateTransferConversionVisibility(resetRate = false) {
         const fromId = document.getElementById('trans-from').value;
-        const toId = document.getElementById('trans-to').value;
+        const toVal = document.getElementById('trans-to').value;
         const conversionGroup = document.getElementById('trans-conversion-group');
         
-        if (!fromId || !toId || fromId === toId) {
+        let toProfileId = State.profilesState ? State.profilesState.activeProfileId : null;
+        let toAccountId = toVal;
+        
+        if (toVal && toVal.includes(':')) {
+            const parts = toVal.split(':');
+            toProfileId = parts[0];
+            toAccountId = parts[1];
+        }
+
+        if (!fromId || !toAccountId || (fromId === toAccountId && toProfileId === (State.profilesState ? State.profilesState.activeProfileId : null))) {
             if (conversionGroup) conversionGroup.style.display = 'none';
             return;
         }
 
         const fromAccount = State.db.accounts.find(a => String(a.id) === String(fromId));
-        const toAccount = State.db.accounts.find(a => String(a.id) === String(toId));
+        let toAccount = null;
+        if (toProfileId === (State.profilesState ? State.profilesState.activeProfileId : null)) {
+            toAccount = State.db.accounts.find(a => String(a.id) === String(toAccountId));
+        } else {
+            const targetProfile = State.profilesState.profiles.find(p => String(p.id) === String(toProfileId));
+            if (targetProfile) {
+                toAccount = targetProfile.db.accounts.find(a => String(a.id) === String(toAccountId));
+            }
+        }
 
         if (fromAccount && toAccount && fromAccount.currency !== toAccount.currency) {
             if (conversionGroup) conversionGroup.style.display = 'flex';
@@ -304,9 +321,25 @@ export const FormService = {
         if (submitBtn) submitBtn.textContent = 'Guardar';
 
         document.getElementById('trans-id').value = '';
-        const options = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
-        fromSelect.innerHTML = options;
-        toSelect.innerHTML = options;
+        
+        // Generar selectores de origen (solo locales)
+        fromSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+
+        // Generar selectores de destino (locales + otros perfiles)
+        let toOptionsHtml = `<optgroup label="Este Perfil (${State.activeProfile.name})">`;
+        toOptionsHtml += State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+        toOptionsHtml += `</optgroup>`;
+
+        if (State.profilesState && State.profilesState.profiles) {
+            State.profilesState.profiles.forEach(p => {
+                if (String(p.id) !== String(State.profilesState.activeProfileId)) {
+                    toOptionsHtml += `<optgroup label="Perfil: ${p.name}">`;
+                    toOptionsHtml += p.db.accounts.map(a => `<option value="${p.id}:${a.id}">${a.name} (${a.currency})</option>`).join('');
+                    toOptionsHtml += `</optgroup>`;
+                }
+            });
+        }
+        toSelect.innerHTML = toOptionsHtml;
 
         if (fromId) fromSelect.value = fromId;
         if (toId) toSelect.value = toId;
@@ -333,6 +366,11 @@ export const FormService = {
         if (!tx) return;
 
         if (tx.type === 'transfer') {
+            if (tx.from_profile_id) {
+                alert("Esta transferencia se originó en otro perfil. Para editar sus datos, por favor cámbiate al perfil de origen.");
+                return;
+            }
+
             const modal = document.getElementById('transfer-modal');
             const title = document.getElementById('transfer-modal-title');
             const fromSelect = document.getElementById('trans-from');
@@ -344,14 +382,32 @@ export const FormService = {
             if (deleteBtn) deleteBtn.classList.remove('hidden');
             if (submitBtn) submitBtn.textContent = 'Guardar';
 
-            const options = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
-            fromSelect.innerHTML = options;
-            toSelect.innerHTML = options;
+            fromSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+
+            let toOptionsHtml = `<optgroup label="Este Perfil (${State.activeProfile.name})">`;
+            toOptionsHtml += State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+            toOptionsHtml += `</optgroup>`;
+
+            if (State.profilesState && State.profilesState.profiles) {
+                State.profilesState.profiles.forEach(p => {
+                    if (String(p.id) !== String(State.profilesState.activeProfileId)) {
+                        toOptionsHtml += `<optgroup label="Perfil: ${p.name}">`;
+                        toOptionsHtml += p.db.accounts.map(a => `<option value="${p.id}:${a.id}">${a.name} (${a.currency})</option>`).join('');
+                        toOptionsHtml += `</optgroup>`;
+                    }
+                });
+            }
+            toSelect.innerHTML = toOptionsHtml;
 
             document.getElementById('trans-id').value = tx.id;
             document.getElementById('trans-date').value = tx.date;
             fromSelect.value = tx.from_account_id;
-            toSelect.value = tx.to_account_id;
+            
+            if (tx.to_profile_id) {
+                toSelect.value = tx.to_profile_id + ':' + tx.to_account_id;
+            } else {
+                toSelect.value = tx.to_account_id;
+            }
             
             const fee = tx.fee || 0;
             const amountSent = tx.amount_extracted - fee;
@@ -592,12 +648,32 @@ export const FormService = {
         const amount = parseFloat(f['trans-amount'].value);
         const fee = parseFloat(f['trans-fee']?.value || 0) || 0; // Comisión bancaria (por defecto 0)
         const fromId = f['trans-from'].value;
-        const toId = f['trans-to'].value;
+        const toVal = f['trans-to'].value;
         const transId = f['trans-id'].value;
-        if (fromId === toId) return alert("Cuentas idénticas");
+
+        let toProfileId = State.profilesState.activeProfileId;
+        let toAccountId = toVal;
+        
+        if (toVal.includes(':')) {
+            const parts = toVal.split(':');
+            toProfileId = parts[0];
+            toAccountId = parts[1];
+        }
+
+        if (fromId === toAccountId && toProfileId === State.profilesState.activeProfileId) {
+            return alert("Cuentas idénticas");
+        }
         
         const fromAccount = State.db.accounts.find(a => String(a.id) === String(fromId));
-        const toAccount = State.db.accounts.find(a => String(a.id) === String(toId));
+        let toAccount = null;
+        if (toProfileId === State.profilesState.activeProfileId) {
+            toAccount = State.db.accounts.find(a => String(a.id) === String(toAccountId));
+        } else {
+            const targetProfile = State.profilesState.profiles.find(p => String(p.id) === String(toProfileId));
+            if (targetProfile) {
+                toAccount = targetProfile.db.accounts.find(a => String(a.id) === String(toAccountId));
+            }
+        }
         
         if (!fromAccount || !toAccount) return alert("Error al encontrar las cuentas");
         
@@ -619,7 +695,7 @@ export const FormService = {
             type: 'transfer', 
             date: f['trans-date'].value,
             from_account_id: fromId, 
-            to_account_id: toId,
+            to_account_id: toAccountId,
             amount_extracted: totalExtracted,  // Lo que sale del origen (incluye comisión)
             amount_received: amountReceived,    // Lo que llega al destino (sin comisión)
             fee: fee,                           // Guardamos la comisión para auditoría
@@ -635,11 +711,64 @@ export const FormService = {
         }
 
         if (transId) {
+            if (toProfileId !== State.profilesState.activeProfileId) {
+                txData.to_profile_id = toProfileId;
+            }
             State.updateTransaction(transId, txData);
         } else {
-            State.addTransaction(txData);
-            State.updateAccountBalance(fromId, -totalExtracted);  // Descuenta monto + comisión del origen
-            State.updateAccountBalance(toId, amountReceived);     // Acredita solo el monto al destino
+            if (toProfileId === State.profilesState.activeProfileId) {
+                // Transferencia local normal
+                State.addTransaction(txData);
+                State.updateAccountBalance(fromId, -totalExtracted);
+                State.updateAccountBalance(toAccountId, amountReceived);
+            } else {
+                // Transferencia inter-perfil
+                const sourceTxId = Date.now();
+                const targetTxId = Date.now() + 1;
+                
+                const rateNote = fromAccount.currency !== toAccount.currency 
+                    ? ` (Tasa: 1 ${fromAccount.currency} = ${exchangeRate.toFixed(4).replace(/\.?0+$/, '')} ${toAccount.currency})`
+                    : '';
+                const targetProfile = State.profilesState.profiles.find(p => String(p.id) === String(toProfileId));
+                
+                // Preparar datos de origen
+                const txDataFrom = {
+                    ...txData,
+                    to_profile_id: toProfileId,
+                    linked_tx_id: targetTxId,
+                    notes: `Transferencia a perfil "${targetProfile.name}"` + (fee > 0 ? ` &bull; Comisión: ${fee.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${fromAccount.currency}` : '') + rateNote
+                };
+                
+                // Preparar datos de destino
+                const txDataTo = {
+                    type: 'transfer',
+                    date: f['trans-date'].value,
+                    from_account_id: fromId,
+                    from_profile_id: State.profilesState.activeProfileId,
+                    to_account_id: toAccountId,
+                    amount_extracted: totalExtracted,
+                    amount_received: amountReceived,
+                    fee: fee,
+                    exchange_rate: exchangeRate,
+                    linked_tx_id: sourceTxId,
+                    notes: `Transferencia desde perfil "${State.activeProfile.name}"` + rateNote
+                };
+                
+                // Aplicar y guardar local (origen)
+                State.addTransaction({ id: sourceTxId, ...txDataFrom });
+                State.updateAccountBalance(fromId, -totalExtracted);
+                
+                // Aplicar y guardar en destino
+                targetProfile.db.transactions.push({
+                    id: targetTxId,
+                    ...txDataTo
+                });
+                toAccount.balance += amountReceived;
+                
+                // Guardar todo el estado y notificar
+                State.save();
+                State.notify();
+            }
         }
         this.hideModal('transfer-modal');
     },

@@ -1,5 +1,5 @@
 // Service Worker — Finanzas Personales PWA
-const CACHE_NAME = 'finanzas-v6.4';
+const CACHE_NAME = 'finanzas-v6.5';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -17,7 +17,8 @@ const ASSETS_TO_CACHE = [
     './app-icon.png',
     './manifest.json',
     'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inconsolata:wght@200..900&display=swap',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+    'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
 // Instalar: cachear archivos estáticos
@@ -46,28 +47,36 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// Fetch: Network first, fallback to cache (stale-while-revalidate para archivos locales)
+// Fetch: Stale-While-Revalidate para recursos estáticos y exclusión de Google APIs
 self.addEventListener('fetch', event => {
+    // Excluir peticiones que no sean GET y esquemas no http/https
+    if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+        return;
+    }
+
+    // Excluir APIs de Google (Google Drive y autenticación) de la interceptación del Service Worker
+    if (event.request.url.includes('googleapis.com') || event.request.url.includes('accounts.google.com')) {
+        return;
+    }
+
     event.respondWith(
-        fetch(event.request)
-            .then(response => {
-                // Guardar copia fresca en cache
-                if(response.ok) {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, responseClone);
-                    });
-                }
-                return response;
-            })
-            .catch(() => {
-                // Si la red falla, servir desde cache
-                return caches.match(event.request).then(cached => {
-                    return cached || new Response('Offline — recurso no disponible.', {
-                        status: 503,
-                        statusText: 'Service Unavailable'
-                    });
+        caches.match(event.request).then(cachedResponse => {
+            const fetchPromise = fetch(event.request)
+                .then(networkResponse => {
+                    if (networkResponse.ok) {
+                        const responseClone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then(cache => {
+                            cache.put(event.request, responseClone);
+                        });
+                    }
+                    return networkResponse;
+                })
+                .catch(err => {
+                    console.warn('SW: Error de red al solicitar recurso:', event.request.url, err);
                 });
-            })
+
+            // Retornar la respuesta cacheada si existe, o esperar a la de red si no está en caché
+            return cachedResponse || fetchPromise;
+        })
     );
 });

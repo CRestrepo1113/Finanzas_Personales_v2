@@ -173,10 +173,41 @@ class StateManager {
         
         // Revertir balances
         if (tx.type === 'transfer') {
-            const fromAcc = this.db.accounts.find(a => String(a.id) === String(tx.from_account_id));
-            const toAcc = this.db.accounts.find(a => String(a.id) === String(tx.to_account_id));
-            if (fromAcc) fromAcc.balance += tx.amount_extracted;
-            if (toAcc) toAcc.balance -= tx.amount_received;
+            if (tx.to_profile_id) {
+                // Es la transacción de salida de una transferencia inter-perfil
+                const targetProfile = this.profilesState.profiles.find(p => String(p.id) === String(tx.to_profile_id));
+                if (targetProfile) {
+                    const targetTxIndex = targetProfile.db.transactions.findIndex(t => String(t.id) === String(tx.linked_tx_id));
+                    if (targetTxIndex !== -1) {
+                        const targetTx = targetProfile.db.transactions[targetTxIndex];
+                        const targetAcc = targetProfile.db.accounts.find(a => String(a.id) === String(targetTx.to_account_id));
+                        if (targetAcc) targetAcc.balance -= targetTx.amount_received;
+                        targetProfile.db.transactions.splice(targetTxIndex, 1);
+                    }
+                }
+                const fromAcc = this.db.accounts.find(a => String(a.id) === String(tx.from_account_id));
+                if (fromAcc) fromAcc.balance += tx.amount_extracted;
+            } else if (tx.from_profile_id) {
+                // Es la transacción de entrada de una transferencia inter-perfil
+                const sourceProfile = this.profilesState.profiles.find(p => String(p.id) === String(tx.from_profile_id));
+                if (sourceProfile) {
+                    const sourceTxIndex = sourceProfile.db.transactions.findIndex(t => String(t.id) === String(tx.linked_tx_id));
+                    if (sourceTxIndex !== -1) {
+                        const sourceTx = sourceProfile.db.transactions[sourceTxIndex];
+                        const sourceAcc = sourceProfile.db.accounts.find(a => String(a.id) === String(sourceTx.from_account_id));
+                        if (sourceAcc) sourceAcc.balance += sourceTx.amount_extracted;
+                        sourceProfile.db.transactions.splice(sourceTxIndex, 1);
+                    }
+                }
+                const toAcc = this.db.accounts.find(a => String(a.id) === String(tx.to_account_id));
+                if (toAcc) toAcc.balance -= tx.amount_received;
+            } else {
+                // Transferencia local normal
+                const fromAcc = this.db.accounts.find(a => String(a.id) === String(tx.from_account_id));
+                const toAcc = this.db.accounts.find(a => String(a.id) === String(tx.to_account_id));
+                if (fromAcc) fromAcc.balance += tx.amount_extracted;
+                if (toAcc) toAcc.balance -= tx.amount_received;
+            }
         } else {
             const cat = this.db.categories.find(c => String(c.id) === String(tx.category_id));
             if (cat) {
@@ -199,10 +230,37 @@ class StateManager {
         
         // 1. Revertir balances del movimiento viejo
         if (oldTx.type === 'transfer') {
-            const fromAcc = this.db.accounts.find(a => String(a.id) === String(oldTx.from_account_id));
-            const toAcc = this.db.accounts.find(a => String(a.id) === String(oldTx.to_account_id));
-            if (fromAcc) fromAcc.balance += oldTx.amount_extracted;
-            if (toAcc) toAcc.balance -= oldTx.amount_received;
+            if (oldTx.to_profile_id) {
+                // Salida inter-perfil
+                const targetProfile = this.profilesState.profiles.find(p => String(p.id) === String(oldTx.to_profile_id));
+                if (targetProfile) {
+                    const targetTx = targetProfile.db.transactions.find(t => String(t.id) === String(oldTx.linked_tx_id));
+                    if (targetTx) {
+                        const targetAcc = targetProfile.db.accounts.find(a => String(a.id) === String(targetTx.to_account_id));
+                        if (targetAcc) targetAcc.balance -= targetTx.amount_received;
+                    }
+                }
+                const fromAcc = this.db.accounts.find(a => String(a.id) === String(oldTx.from_account_id));
+                if (fromAcc) fromAcc.balance += oldTx.amount_extracted;
+            } else if (oldTx.from_profile_id) {
+                // Entrada inter-perfil
+                const sourceProfile = this.profilesState.profiles.find(p => String(p.id) === String(oldTx.from_profile_id));
+                if (sourceProfile) {
+                    const sourceTx = sourceProfile.db.transactions.find(t => String(t.id) === String(oldTx.linked_tx_id));
+                    if (sourceTx) {
+                        const sourceAcc = sourceProfile.db.accounts.find(a => String(a.id) === String(sourceTx.from_account_id));
+                        if (sourceAcc) sourceAcc.balance += sourceTx.amount_extracted;
+                    }
+                }
+                const toAcc = this.db.accounts.find(a => String(a.id) === String(oldTx.to_account_id));
+                if (toAcc) toAcc.balance -= oldTx.amount_received;
+            } else {
+                // Transferencia local
+                const fromAcc = this.db.accounts.find(a => String(a.id) === String(oldTx.from_account_id));
+                const toAcc = this.db.accounts.find(a => String(a.id) === String(oldTx.to_account_id));
+                if (fromAcc) fromAcc.balance += oldTx.amount_extracted;
+                if (toAcc) toAcc.balance -= oldTx.amount_received;
+            }
         } else {
             const cat = this.db.categories.find(c => String(c.id) === String(oldTx.category_id));
             if (cat) {
@@ -213,12 +271,70 @@ class StateManager {
             }
         }
         
+        // Gestión de cambios en el destino inter-perfil (limpieza de espejo antiguo si cambia o desaparece)
+        if (oldTx.type === 'transfer' && oldTx.to_profile_id && (!updatedTx.to_profile_id || String(updatedTx.to_profile_id) !== String(oldTx.to_profile_id))) {
+            const targetProfile = this.profilesState.profiles.find(p => String(p.id) === String(oldTx.to_profile_id));
+            if (targetProfile) {
+                const targetTxIndex = targetProfile.db.transactions.findIndex(t => String(t.id) === String(oldTx.linked_tx_id));
+                if (targetTxIndex !== -1) {
+                    targetProfile.db.transactions.splice(targetTxIndex, 1);
+                }
+            }
+            delete oldTx.to_profile_id;
+            delete oldTx.linked_tx_id;
+        }
+
         // 2. Aplicar balances del movimiento nuevo
         if (updatedTx.type === 'transfer') {
-            const fromAcc = this.db.accounts.find(a => String(a.id) === String(updatedTx.from_account_id));
-            const toAcc = this.db.accounts.find(a => String(a.id) === String(updatedTx.to_account_id));
-            if (fromAcc) fromAcc.balance -= updatedTx.amount_extracted;
-            if (toAcc) toAcc.balance += updatedTx.amount_received;
+            if (updatedTx.to_profile_id) {
+                // Salida inter-perfil
+                const targetProfile = this.profilesState.profiles.find(p => String(p.id) === String(updatedTx.to_profile_id));
+                if (targetProfile) {
+                    let targetTx = targetProfile.db.transactions.find(t => String(t.id) === String(oldTx.linked_tx_id || updatedTx.linked_tx_id));
+                    if (!targetTx) {
+                        // Crear espejo nuevo si antes era local o cambió de perfil
+                        const newTargetId = Date.now() + 2;
+                        targetTx = {
+                            id: newTargetId,
+                            type: 'transfer',
+                            date: updatedTx.date,
+                            from_account_id: updatedTx.from_account_id,
+                            from_profile_id: this.profilesState.activeProfileId,
+                            to_account_id: updatedTx.to_account_id,
+                            amount_extracted: updatedTx.amount_extracted,
+                            amount_received: updatedTx.amount_received,
+                            fee: updatedTx.fee,
+                            exchange_rate: updatedTx.exchange_rate,
+                            notes: updatedTx.notes,
+                            linked_tx_id: oldTx.id
+                        };
+                        targetProfile.db.transactions.push(targetTx);
+                        oldTx.linked_tx_id = newTargetId;
+                        oldTx.to_profile_id = updatedTx.to_profile_id;
+                    } else {
+                        // Sincronizar datos con el espejo existente
+                        targetTx.date = updatedTx.date;
+                        targetTx.from_account_id = updatedTx.from_account_id;
+                        targetTx.to_account_id = updatedTx.to_account_id;
+                        targetTx.amount_extracted = updatedTx.amount_extracted;
+                        targetTx.amount_received = updatedTx.amount_received;
+                        targetTx.fee = updatedTx.fee;
+                        targetTx.exchange_rate = updatedTx.exchange_rate;
+                        targetTx.notes = updatedTx.notes;
+                    }
+                    
+                    const targetAcc = targetProfile.db.accounts.find(a => String(a.id) === String(targetTx.to_account_id));
+                    if (targetAcc) targetAcc.balance += targetTx.amount_received;
+                }
+                const fromAcc = this.db.accounts.find(a => String(a.id) === String(updatedTx.from_account_id));
+                if (fromAcc) fromAcc.balance -= updatedTx.amount_extracted;
+            } else {
+                // Transferencia local normal
+                const fromAcc = this.db.accounts.find(a => String(a.id) === String(updatedTx.from_account_id));
+                const toAcc = this.db.accounts.find(a => String(a.id) === String(updatedTx.to_account_id));
+                if (fromAcc) fromAcc.balance -= updatedTx.amount_extracted;
+                if (toAcc) toAcc.balance += updatedTx.amount_received;
+            }
         } else {
             const cat = this.db.categories.find(c => String(c.id) === String(updatedTx.category_id));
             if (cat) {
@@ -236,7 +352,7 @@ class StateManager {
         };
         
         this.notify();
-     }
+    }
 
     updateAccountBalance(accountId, amount) {
         const account = this.db.accounts.find(a => String(a.id) === String(accountId));
