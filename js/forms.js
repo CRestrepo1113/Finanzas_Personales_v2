@@ -199,17 +199,41 @@ export const FormService = {
             });
         }
 
-        // Mostrar/ocultar subtipo de categorías según tipo de categoría
+        // Mostrar/ocultar subtipo y día de pago de categorías según tipo/subtipo
         const catTypeSelect = document.getElementById('cat-type');
+        const catSubtypeSelect = document.getElementById('cat-subtype');
         const catSubtypeGroup = document.getElementById('cat-subtype-group');
-        if (catTypeSelect && catSubtypeGroup) {
-            catTypeSelect.addEventListener('change', () => {
-                if (catTypeSelect.value === 'expense') {
-                    catSubtypeGroup.classList.remove('hidden');
+        const catPaymentDayGroup = document.getElementById('cat-payment-day-group');
+
+        function updateCategoryFieldsVisibility() {
+            if (!catTypeSelect) return;
+            const isExpense = catTypeSelect.value === 'expense';
+            const isFixed = catSubtypeSelect && catSubtypeSelect.value === 'fixed';
+
+            if (isExpense) {
+                if (catSubtypeGroup) catSubtypeGroup.classList.remove('hidden');
+                if (isFixed) {
+                    if (catPaymentDayGroup) catPaymentDayGroup.classList.remove('hidden');
                 } else {
-                    catSubtypeGroup.classList.add('hidden');
+                    if (catPaymentDayGroup) {
+                        catPaymentDayGroup.classList.add('hidden');
+                        document.getElementById('cat-payment-day').value = '';
+                    }
                 }
-            });
+            } else {
+                if (catSubtypeGroup) catSubtypeGroup.classList.add('hidden');
+                if (catPaymentDayGroup) {
+                    catPaymentDayGroup.classList.add('hidden');
+                    document.getElementById('cat-payment-day').value = '';
+                }
+            }
+        }
+
+        if (catTypeSelect) {
+            catTypeSelect.addEventListener('change', updateCategoryFieldsVisibility);
+        }
+        if (catSubtypeSelect) {
+            catSubtypeSelect.addEventListener('change', updateCategoryFieldsVisibility);
         }
     },
 
@@ -518,6 +542,9 @@ export const FormService = {
         let selectedIcon = 'fa-tag';   // Icono por defecto
         const subtypeGroup = document.getElementById('cat-subtype-group');
 
+        const paymentDayGroup = document.getElementById('cat-payment-day-group');
+        const paymentDayInput = document.getElementById('cat-payment-day');
+
         if (id) {
             const cat = State.db.categories.find(c => String(c.id) === String(id));
             form['cat-id'].value = cat.id;
@@ -528,8 +555,19 @@ export const FormService = {
             if (cat.type === 'expense') {
                 form['cat-subtype'].value = cat.subtype || 'fixed';
                 if (subtypeGroup) subtypeGroup.classList.remove('hidden');
+                
+                // Mostrar día de pago si es fijo
+                if ((cat.subtype || 'fixed') === 'fixed') {
+                    if (paymentDayInput) paymentDayInput.value = cat.payment_day !== undefined && cat.payment_day !== null ? cat.payment_day : '';
+                    if (paymentDayGroup) paymentDayGroup.classList.remove('hidden');
+                } else {
+                    if (paymentDayInput) paymentDayInput.value = '';
+                    if (paymentDayGroup) paymentDayGroup.classList.add('hidden');
+                }
             } else {
                 if (subtypeGroup) subtypeGroup.classList.add('hidden');
+                if (paymentDayInput) paymentDayInput.value = '';
+                if (paymentDayGroup) paymentDayGroup.classList.add('hidden');
             }
 
             form['cat-icon'].value = cat.icon;
@@ -542,6 +580,8 @@ export const FormService = {
             form['cat-type'].value = 'expense';
             form['cat-subtype'].value = 'fixed';
             if (subtypeGroup) subtypeGroup.classList.remove('hidden');
+            if (paymentDayInput) paymentDayInput.value = '';
+            if (paymentDayGroup) paymentDayGroup.classList.remove('hidden');
             form['cat-color'].value = selectedColor;
             form['cat-icon'].value = selectedIcon;
         }
@@ -851,12 +891,17 @@ export const FormService = {
         const type = f['cat-type'].value;
         const subtype = type === 'expense' ? f['cat-subtype'].value : null;
 
+        const paymentDayVal = type === 'expense' && subtype === 'fixed' && f['cat-payment-day']?.value 
+            ? parseInt(f['cat-payment-day'].value) 
+            : null;
+
         const data = { 
             name: f['cat-name'].value, 
             type: type, 
             subtype: subtype,
             icon: f['cat-icon'].value, 
-            visual_color: f['cat-color'].value 
+            visual_color: f['cat-color'].value,
+            payment_day: paymentDayVal
         };
         if (f['cat-id'].value) State.updateCategory(f['cat-id'].value, data);
         else State.addCategory(data);
