@@ -429,8 +429,12 @@ export const UI = {
                                 </div>
                                 <div class="t-text">
                                     <span class="t-name">Transferencia interna</span>
-                                    <span class="t-date">${fromAcc.name} ➜ ${toAcc.name}</span>
-                                    ${parseFloat(tx.fee || 0) > 0 ? `<span style="font-size:0.75rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
+                                    <span class="t-date" style="display: flex; flex-direction: column; gap: 2px;">
+                                        <strong style="color: var(--text-primary); font-weight: 700;">${fromAcc.name} ➜ ${toAcc.name}</strong>
+                                        ${tx.notes && tx.notes !== 'Transferencia interna' ? `<span style="font-size:0.72rem; color:var(--text-secondary); font-weight: 500;"><i class="fa-solid fa-coins" style="margin-right:3px;"></i>${tx.notes}</span>` : ''}
+                                        ${parseFloat(tx.fee || 0) > 0 ? `<span style="font-size:0.72rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
+                                        ${tx.user_notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500; margin-top: 2px;">${tx.user_notes}</span>` : ''}
+                                    </span>
                                 </div>
                             </div>
                             <div style="text-align: right; line-height: 1.2; flex-shrink: 0; margin-left: 10px;">
@@ -898,8 +902,12 @@ export const UI = {
                                 </div>
                                 <div class="t-text">
                                     <span class="t-name">Transferencia interna</span>
-                                    <span class="t-date">${fromAcc.name} ➜ ${toAcc.name}</span>
-                                    ${parseFloat(tx.fee || 0) > 0 && isOutgoing ? `<span style="font-size:0.75rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
+                                    <span class="t-date" style="display: flex; flex-direction: column; gap: 2px;">
+                                        <strong style="color: var(--text-primary); font-weight: 700;">${fromAcc.name} ➜ ${toAcc.name}</strong>
+                                        ${tx.notes && tx.notes !== 'Transferencia interna' ? `<span style="font-size:0.72rem; color:var(--text-secondary); font-weight: 500;"><i class="fa-solid fa-coins" style="margin-right:3px;"></i>${tx.notes}</span>` : ''}
+                                        ${parseFloat(tx.fee || 0) > 0 && isOutgoing ? `<span style="font-size:0.72rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
+                                        ${tx.user_notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500; margin-top: 2px;">${tx.user_notes}</span>` : ''}
+                                    </span>
                                 </div>
                             </div>
                             <div style="text-align: right; line-height: 1.2; flex-shrink: 0; margin-left: 10px;">

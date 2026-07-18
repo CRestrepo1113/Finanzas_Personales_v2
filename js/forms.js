@@ -355,6 +355,10 @@ export const FormService = {
         const feeInput = document.getElementById('trans-fee');
         if (feeInput) feeInput.value = '0';
 
+        // Limpiar notas
+        const notesInput = document.getElementById('trans-notes');
+        if (notesInput) notesInput.value = '';
+
         // Actualizar la visibilidad y calcular los valores iniciales de conversión
         this.updateTransferConversionVisibility(true);
 
@@ -429,6 +433,10 @@ export const FormService = {
             }
             
             transAmountReceived.value = tx.amount_received ? tx.amount_received.toFixed(2) : '';
+
+            // Cargar notas de usuario
+            const notesInput = document.getElementById('trans-notes');
+            if (notesInput) notesInput.value = tx.user_notes || '';
 
             // Mostrar u ocultar el grupo de conversión
             this.updateTransferConversionVisibility(false);
@@ -691,6 +699,8 @@ export const FormService = {
         // El origen pierde: monto enviado + comisión (ambos en la divisa del origen)
         const totalExtracted = Math.round((amount + fee) * 100) / 100;
         
+        const userNotesVal = document.getElementById('trans-notes')?.value.trim() || '';
+        
         const txData = {
             type: 'transfer', 
             date: f['trans-date'].value,
@@ -700,6 +710,7 @@ export const FormService = {
             amount_received: amountReceived,    // Lo que llega al destino (sin comisión)
             fee: fee,                           // Guardamos la comisión para auditoría
             exchange_rate: exchangeRate,        // Guardamos la tasa de cambio utilizada
+            user_notes: userNotesVal,           // Guardamos las notas del usuario
             notes: fromAccount.currency !== toAccount.currency 
                 ? `Transferencia (Tasa: 1 ${fromAccount.currency} = ${exchangeRate.toFixed(4).replace(/\.?0+$/, '')} ${toAccount.currency})`
                 : 'Transferencia interna'
@@ -751,6 +762,7 @@ export const FormService = {
                     fee: fee,
                     exchange_rate: exchangeRate,
                     linked_tx_id: sourceTxId,
+                    user_notes: userNotesVal,           // Guardamos las notas del usuario en destino también
                     notes: `Transferencia desde perfil "${State.activeProfile.name}"` + rateNote
                 };
                 

@@ -306,6 +306,7 @@ class StateManager {
                             fee: updatedTx.fee,
                             exchange_rate: updatedTx.exchange_rate,
                             notes: updatedTx.notes,
+                            user_notes: updatedTx.user_notes, // Sincronizar notas de usuario
                             linked_tx_id: oldTx.id
                         };
                         targetProfile.db.transactions.push(targetTx);
@@ -321,6 +322,7 @@ class StateManager {
                         targetTx.fee = updatedTx.fee;
                         targetTx.exchange_rate = updatedTx.exchange_rate;
                         targetTx.notes = updatedTx.notes;
+                        targetTx.user_notes = updatedTx.user_notes; // Sincronizar notas de usuario al editar
                     }
                     
                     const targetAcc = targetProfile.db.accounts.find(a => String(a.id) === String(targetTx.to_account_id));

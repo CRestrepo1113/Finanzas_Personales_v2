@@ -397,8 +397,21 @@ export const Analytics = {
             
             // Revertir el efecto de la transacción sobre currentNW
             if (tx.type === 'transfer') {
-                const fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
-                const toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                let fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
+                if (!fromAcc && tx.from_profile_id && State.profilesState && State.profilesState.profiles) {
+                    const sourceProfile = State.profilesState.profiles.find(p => String(p.id) === String(tx.from_profile_id));
+                    if (sourceProfile) {
+                        fromAcc = sourceProfile.db.accounts.find(a => String(a.id) === String(tx.from_account_id));
+                    }
+                }
+
+                let toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                if (!toAcc && tx.to_profile_id && State.profilesState && State.profilesState.profiles) {
+                    const targetProfile = State.profilesState.profiles.find(p => String(p.id) === String(tx.to_profile_id));
+                    if (targetProfile) {
+                        toAcc = targetProfile.db.accounts.find(a => String(a.id) === String(tx.to_account_id));
+                    }
+                }
                 
                 const rateFrom = fromAcc ? (rates[fromAcc.currency] || 1) : 1;
                 const rateTo = toAcc ? (rates[toAcc.currency] || 1) : 1;
@@ -627,6 +640,39 @@ export const Analytics = {
         let totalNeeds = 0;
         let totalWants = 0;
         let totalSavings = 0;
+        let totalTransferLoss = 0; // Pérdida cambiaria y comisiones en transferencias
+        
+        // Calcular pérdida cambiaria y comisiones en transferencias en el rango
+        filteredTx.forEach(tx => {
+            if (tx.type === 'transfer') {
+                let fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
+                if (!fromAcc && tx.from_profile_id && State.profilesState && State.profilesState.profiles) {
+                    const sourceProfile = State.profilesState.profiles.find(p => String(p.id) === String(tx.from_profile_id));
+                    if (sourceProfile) {
+                        fromAcc = sourceProfile.db.accounts.find(a => String(a.id) === String(tx.from_account_id));
+                    }
+                }
+                
+                let toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                if (!toAcc && tx.to_profile_id && State.profilesState && State.profilesState.profiles) {
+                    const targetProfile = State.profilesState.profiles.find(p => String(p.id) === String(tx.to_profile_id));
+                    if (targetProfile) {
+                        toAcc = targetProfile.db.accounts.find(a => String(a.id) === String(tx.to_account_id));
+                    }
+                }
+                
+                const rateFrom = fromAcc ? (rates[fromAcc.currency] || 1) : 1;
+                const rateTo = toAcc ? (rates[toAcc.currency] || 1) : 1;
+                
+                const extractedInBase = parseFloat(tx.amount_extracted || 0) / rateFrom;
+                const receivedInBase = parseFloat(tx.amount_received || 0) / rateTo;
+                
+                const diff = extractedInBase - receivedInBase;
+                if (diff > 0.01) {
+                    totalTransferLoss += diff;
+                }
+            }
+        });
         
         // 1. Sumar ingresos reales y gastos en categorías (Necesidades y Deseos)
         filteredTx.forEach(tx => {
@@ -742,6 +788,12 @@ export const Analytics = {
                     </div>
                 </div>
             </div>
+            ${totalTransferLoss > 0.01 ? `
+            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed rgba(0,0,0,0.1); font-size: 0.85rem; color: #B23A1E; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-right-left"></i>
+                <span><strong>Costo por Conversión/Comisión en Transferencias:</strong> $${totalTransferLoss.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${baseCurrency}</span>
+            </div>
+            ` : ''}
             <p style="margin-top: 15px; font-size: 0.85rem; color: var(--text-secondary); font-style: italic; border-left: 2px solid ${statusColor}; padding-left: 8px;">
                 ${suggestion}
             </p>
