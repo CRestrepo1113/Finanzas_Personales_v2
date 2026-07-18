@@ -162,10 +162,10 @@ export const UI = {
             this.elements.totalNetWorth.innerHTML = `${netWorth.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style="font-size: 0.55em; font-weight: 500; opacity: 0.75; margin-left: 5px; vertical-align: middle;">${baseCurrency}</span>`;
         }
         if (this.elements.totalAssets) {
-            this.elements.totalAssets.innerHTML = `${assets.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style="font-size: 0.75em; font-weight: 500; opacity: 0.75; margin-left: 3px; vertical-align: middle;">${baseCurrency}</span>`;
+            this.elements.totalAssets.textContent = assets.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
         if (this.elements.totalLiabilities) {
-            this.elements.totalLiabilities.innerHTML = `${liabilities.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style="font-size: 0.75em; font-weight: 500; opacity: 0.75; margin-left: 3px; vertical-align: middle;">${baseCurrency}</span>`;
+            this.elements.totalLiabilities.textContent = liabilities.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
     },
 

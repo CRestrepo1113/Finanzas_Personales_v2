@@ -153,9 +153,9 @@ export const NotificationService = {
             if (!catIcon.startsWith('fa-')) catIcon = 'fa-' + catIcon;
 
             return `
-                <div class="upcoming-payment-card" style="${cardStyle} display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 8px; border: 2px solid var(--text-primary); transition: transform 0.2s;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="background-color: ${catColor}; color: #fff; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; border: 1.5px solid var(--text-primary);">
+                <div class="upcoming-payment-card" style="${cardStyle}">
+                    <div class="up-details">
+                        <div style="background-color: ${catColor}; color: #fff; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; border: 1.5px solid var(--text-primary); flex-shrink: 0;">
                             <i class="fa-solid ${catIcon}"></i>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 2px;">
@@ -165,7 +165,7 @@ export const NotificationService = {
                             </span>
                         </div>
                     </div>
-                    <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                    <div class="up-status-amount">
                         <span style="font-weight: 700; font-family: 'Inconsolata'; font-size: 1rem; color: var(--text-primary);">
                             $${p.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${baseCurrency}
                         </span>

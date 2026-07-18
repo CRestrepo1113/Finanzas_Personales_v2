@@ -472,15 +472,56 @@ input[type=number] {
 
 /* Estilos para recordatorios de pagos fijos */
 .upcoming-payment-card {
-    border: 2px solid var(--text-primary) !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
     border-radius: 8px 18px 4px 12px !important;
+    border: 2px solid var(--text-primary) !important;
     box-shadow: 4px 4px 0px 0px var(--text-primary) !important;
     transition: transform 0.2s, box-shadow 0.2s;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
 .upcoming-payment-card:hover {
     transform: translate(-1px, -1px);
     box-shadow: 5px 5px 0px 0px var(--text-primary) !important;
+}
+
+.upcoming-payment-card .up-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 160px;
+}
+
+.upcoming-payment-card .up-status-amount {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+    .upcoming-payment-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+    }
+    .upcoming-payment-card .up-status-amount {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px dashed rgba(0, 0, 0, 0.1);
+        padding-top: 8px;
+        margin-top: 2px;
+    }
 }
 
 /* Badges neubrutalistas */
