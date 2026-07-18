@@ -144,6 +144,7 @@ export const UI = {
 
     renderNetWorth() {
         const { accounts, settings } = State.db;
+        const baseCurrency = settings.baseCurrency || 'USD';
         let assets = 0;
         let liabilities = 0;
 
@@ -158,13 +159,13 @@ export const UI = {
         const netWorth = assets - liabilities;
         
         if (this.elements.totalNetWorth) {
-            this.elements.totalNetWorth.textContent = `$${netWorth.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+            this.elements.totalNetWorth.textContent = `$${netWorth.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${baseCurrency}`;
         }
         if (this.elements.totalAssets) {
-            this.elements.totalAssets.textContent = `$${assets.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+            this.elements.totalAssets.textContent = `$${assets.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${baseCurrency}`;
         }
         if (this.elements.totalLiabilities) {
-            this.elements.totalLiabilities.textContent = `$${liabilities.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+            this.elements.totalLiabilities.textContent = `$${liabilities.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${baseCurrency}`;
         }
     },
 
