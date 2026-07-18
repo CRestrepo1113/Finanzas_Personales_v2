@@ -159,13 +159,13 @@ export const UI = {
         const netWorth = assets - liabilities;
         
         if (this.elements.totalNetWorth) {
-            this.elements.totalNetWorth.innerHTML = `${netWorth.toLocaleString('es-ES', { minimumFractionDigits: 2 })} <span style="font-size: 0.55em; font-weight: 500; opacity: 0.75; margin-left: 5px; vertical-align: middle;">${baseCurrency}</span>`;
+            this.elements.totalNetWorth.innerHTML = `${netWorth.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style="font-size: 0.55em; font-weight: 500; opacity: 0.75; margin-left: 5px; vertical-align: middle;">${baseCurrency}</span>`;
         }
         if (this.elements.totalAssets) {
-            this.elements.totalAssets.innerHTML = `${assets.toLocaleString('es-ES', { minimumFractionDigits: 2 })} <span style="font-size: 0.75em; font-weight: 500; opacity: 0.75; margin-left: 3px; vertical-align: middle;">${baseCurrency}</span>`;
+            this.elements.totalAssets.innerHTML = `${assets.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style="font-size: 0.75em; font-weight: 500; opacity: 0.75; margin-left: 3px; vertical-align: middle;">${baseCurrency}</span>`;
         }
         if (this.elements.totalLiabilities) {
-            this.elements.totalLiabilities.innerHTML = `${liabilities.toLocaleString('es-ES', { minimumFractionDigits: 2 })} <span style="font-size: 0.75em; font-weight: 500; opacity: 0.75; margin-left: 3px; vertical-align: middle;">${baseCurrency}</span>`;
+            this.elements.totalLiabilities.innerHTML = `${liabilities.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style="font-size: 0.75em; font-weight: 500; opacity: 0.75; margin-left: 3px; vertical-align: middle;">${baseCurrency}</span>`;
         }
     },
 
@@ -516,8 +516,8 @@ export const UI = {
         
         Object.entries(exchangeRates).forEach(([currency, rate]) => {
             if (currency === baseCurrency) return;
-            // Mostrar hasta 6 decimales para tasas muy pequeñas (ej. COP a USD/EUR)
-            const formattedRate = rate.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+            // Mostrar exactamente 2 decimales para las tasas
+            const formattedRate = rate.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             html += `
                 <div class="setting-row" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 0.9rem;">
                     <span><strong>1 ${baseCurrency}</strong> =</span>
