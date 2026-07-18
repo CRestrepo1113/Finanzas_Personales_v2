@@ -17,6 +17,10 @@
     <link rel="icon" type="image/png" href="icon.png">
     <!-- Google Identity Services SDK -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Librerías de Exportación de Informes Financieros (.xlsx y .docx) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
 </head>
 <body>
     <div id="app">
@@ -112,9 +116,105 @@
                         <option value="month" selected>Últimos 30 Días</option>
                         <option value="3months">Últimos 90 Días</option>
                         <option value="year">Último Año</option>
+                        <option value="custom">Periodo Personalizado</option>
                     </select>
                 </div>
-                <div id="expenses-chart-card-container" style="position: relative; margin-top: 20px;">
+                <div id="analytics-custom-range" class="hidden" style="display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 10px; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary);">Desde:</span>
+                        <input type="date" id="analytics-start-date" class="filter-select" style="font-size: 0.78rem; padding: 3px 4px; width: 100%; min-width: 0;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px; flex: 1; min-width: 0;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary);">Hasta:</span>
+                        <input type="date" id="analytics-end-date" class="filter-select" style="font-size: 0.78rem; padding: 3px 4px; width: 100%; min-width: 0;">
+                    </div>
+                </div>
+                
+                <!-- Botón Volver al Menú de Estadísticas -->
+                <button type="button" id="analytics-back-btn" class="analytics-back-btn hidden" style="margin-top: 15px;">
+                    <i class="fas fa-arrow-left"></i> Volver al Menú
+                </button>
+
+                <!-- Menú de Navegación por Tarjetas -->
+                <div id="analytics-menu" class="analytics-menu-grid">
+                    <div class="analytics-menu-card" data-target="analytics-kpi-container">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Resumen de Indicadores</span>
+                    </div>
+                    <div class="analytics-menu-card" data-target="expenses-chart-card-container">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Distribución de Gastos</span>
+                    </div>
+                    <div class="analytics-menu-card" data-target="net-worth-chart-container">
+                        <i class="fas fa-wallet"></i>
+                        <span>Evolución del Patrimonio</span>
+                    </div>
+                    <div class="analytics-menu-card" data-target="zbb-rule-chart-container">
+                        <i class="fas fa-chart-column"></i>
+                        <span>Análisis Regla 50/30/20</span>
+                    </div>
+                    <div class="analytics-menu-card" data-target="budget-progress-container">
+                        <i class="fas fa-calculator"></i>
+                        <span>Progreso de Presupuestos</span>
+                    </div>
+                    <div class="analytics-menu-card" data-target="analytics-compare-container">
+                        <i class="fas fa-left-right"></i>
+                        <span>Análisis Comparativo</span>
+                    </div>
+                    <div class="analytics-menu-card" data-target="analytics-predictive-container">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span>Análisis Predictivo</span>
+                    </div>
+                    <div class="analytics-menu-card" data-target="analytics-export-container">
+                        <i class="fas fa-file-export"></i>
+                        <span>Exportar Informes</span>
+                    </div>
+                </div>
+
+                <!-- KPIs de Estadísticas -->
+                <div id="analytics-kpi-container" class="hidden"></div>
+
+                <!-- Panel de Análisis Comparativo -->
+                <div id="analytics-compare-container" class="hidden" style="position: relative; margin-top: 20px;"></div>
+
+                <!-- Panel de Análisis Predictivo -->
+                <div id="analytics-predictive-container" class="hidden" style="position: relative; margin-top: 20px;"></div>
+
+                <!-- Panel de Exportación de Informes -->
+                <div id="analytics-export-container" class="hidden" style="position: relative; margin-top: 20px;">
+                    <div style="background-color: var(--bg-card); border: 2px solid var(--text-primary); border-radius: 6px; padding: 15px; margin-bottom: 25px; box-shadow: 2px 2px 0px var(--text-primary); display: flex; align-items: center; gap: 10px; font-size: 0.9rem; line-height: 1.4; color: var(--text-secondary);">
+                        <i class="fa-solid fa-circle-info" style="color: var(--text-primary); font-size: 1.15rem;"></i>
+                        <span>Genera y descarga informes detallados del periodo seleccionado. Puedes elegir entre una auditoría completa de datos en formato Excel (.xlsx) o una presentación analítica para socios en formato Word (.docx).</span>
+                    </div>
+                    
+                    <div class="compare-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                        <!-- OPCIÓN EXCEL -->
+                        <div class="compare-card" id="export-xlsx-btn" style="text-align: center; padding: 25px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px;">
+                            <i class="fa-solid fa-file-excel" style="font-size: 3rem; color: #217346; margin-bottom: 12px;"></i>
+                            <h4 style="font-family: var(--font-heading); font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; color: var(--text-primary);">Informe Excel (.xlsx)</h4>
+                            <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 15px; max-width: 250px; text-align: center;">
+                                Libro mayor con todas las transacciones, conversión a USD, distribución de categorías y modelos predictivos.
+                            </p>
+                            <span class="variation-badge down-good" style="font-size: 0.72rem; padding: 4px 10px; box-shadow: 1.5px 1.5px 0px var(--text-primary); display: inline-block;">
+                                Descargar Hoja de Cálculo
+                            </span>
+                        </div>
+                        
+                        <!-- OPCIÓN WORD -->
+                        <div class="compare-card" id="export-docx-btn" style="text-align: center; padding: 25px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 220px;">
+                            <i class="fa-solid fa-file-word" style="font-size: 3rem; color: #2b579a; margin-bottom: 12px;"></i>
+                            <h4 style="font-family: var(--font-heading); font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; color: var(--text-primary);">Informe Word (.docx)</h4>
+                            <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 15px; max-width: 250px; text-align: center;">
+                                Formato de reporte formal listo para socios. Incluye comentarios analíticos, tablas de KPIs y gráficos financieros integrados.
+                            </p>
+                            <span class="variation-badge down-good" style="font-size: 0.72rem; padding: 4px 10px; box-shadow: 1.5px 1.5px 0px var(--text-primary); display: inline-block;">
+                                Descargar Reporte de Socios
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="expenses-chart-card-container" class="hidden" style="position: relative; margin-top: 20px;">
                     <h3 style="margin-bottom: 15px;">Distribución de Gastos</h3>
                     <div class="settings-card" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between;">
                         <div style="width: 100%; max-width: 220px; height: 220px; position: relative; margin: 0 auto;">
@@ -128,12 +228,12 @@
                         <!-- Inyectado por JS al hacer clic -->
                     </div>
                 </div>
-                <div id="net-worth-chart-container" style="position: relative; height:300px; width:100%; margin-top: 40px;">
+                <div id="net-worth-chart-container" class="hidden" style="position: relative; height:300px; width:100%; margin-top: 40px;">
                     <h3>Evolución de Patrimonio</h3>
                     <canvas id="net-worth-history-chart"></canvas>
                 </div>
                 
-                <div id="zbb-rule-chart-container" style="position: relative; margin-top: 50px; margin-bottom: 50px;">
+                <div id="zbb-rule-chart-container" class="hidden" style="position: relative; margin-top: 50px; margin-bottom: 50px;">
                     <h3 style="margin-bottom: 15px;">Análisis de Regla 50/30/20 (Real)</h3>
                     <div class="settings-card" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between;">
                         <div style="width: 100%; max-width: 220px; height: 220px; position: relative; margin: 0 auto;">
@@ -146,9 +246,9 @@
                 </div>
                 
                 <!-- Progreso de Presupuestos -->
-                <div id="budget-progress-container" style="position: relative; margin-top: 50px; margin-bottom: 50px;">
+                <div id="budget-progress-container" class="hidden" style="position: relative; margin-top: 50px; margin-bottom: 50px;">
                     <h3 style="margin-bottom: 15px;">Progreso de Presupuestos (Topes vs Gastos Reales)</h3>
-                    <div class="settings-card" id="budget-progress-list" style="display: flex; flex-direction: column; gap: 18px; padding: 20px;">
+                    <div id="budget-progress-list" class="budget-grid">
                         <!-- Inyectado dinámicamente por JS -->
                     </div>
                 </div>
@@ -826,6 +926,37 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ====== MODAL: EXPLICACIÓN KPI ====== -->
+        <div id="kpi-info-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 480px;">
+                <div class="modal-header">
+                    <h2 id="kpi-info-title" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-info-circle"></i> Info Indicador
+                    </h2>
+                    <button id="close-kpi-info-modal" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+                    <div>
+                        <h4 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; border-bottom: 1.5px dashed var(--text-primary); padding-bottom: 3px;">¿De qué se trata?</h4>
+                        <p id="kpi-info-description" style="font-size: 0.9rem; line-height: 1.4; color: var(--text-primary);"></p>
+                    </div>
+                    <div>
+                        <h4 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; border-bottom: 1.5px dashed var(--text-primary); padding-bottom: 3px;">¿Cómo se calcula?</h4>
+                        <div id="kpi-info-formula-box" style="background: rgba(0,0,0,0.03); border: 1.5px solid var(--text-primary); border-radius: 6px; padding: 10px; font-family: 'Inconsolata'; font-size: 0.95rem; font-weight: 700; text-align: center; margin: 5px 0;">
+                            <span id="kpi-info-formula"></span>
+                        </div>
+                        <p id="kpi-info-formula-desc" style="font-size: 0.82rem; line-height: 1.4; color: var(--text-secondary); margin-top: 6px;"></p>
+                    </div>
+                    <div>
+                        <h4 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; border-bottom: 1.5px dashed var(--text-primary); padding-bottom: 3px;">¿Cómo interpretar los resultados?</h4>
+                        <ul id="kpi-info-interpretation" style="font-size: 0.88rem; line-height: 1.4; color: var(--text-primary); padding-left: 20px; display: flex; flex-direction: column; gap: 5px;">
+                        </ul>
+                    </div>
+                </div>
+                <button type="button" id="kpi-info-ok-btn" class="btn btn-save" style="margin-top: 20px; width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 6px; box-shadow: 3px 3px 0px var(--text-primary); border: 2.5px solid var(--text-primary); font-family: var(--font-heading); font-weight: bold; cursor: pointer;">Entendido</button>
             </div>
         </div>
     </div>
