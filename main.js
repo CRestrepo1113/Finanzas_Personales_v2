@@ -8,11 +8,13 @@ import { ZBBService } from './js/zbb.js';
 import { CalculatorService } from './js/calculator.js';
 import { DriveService } from './js/drive.js';
 import { NotificationService } from './js/notifications.js';
+import { ModalService } from './js/modal.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Finanzas Personales v2: Inicializando...');
     
-    // 1. Inicializar Estado (Asíncrono)
+    // 1. Inicializar Diálogos Modales y Estado
+    ModalService.init();
     await State.init();
 
     // 2. Inicializar UI y otros servicios
@@ -48,9 +50,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Exponer FormService y CurrencyService globalmente para la UI y servicios cruzados
+// Exponer Servicios globalmente para la UI y servicios cruzados
 window.FormService = FormService;
 window.CurrencyService = CurrencyService;
+window.ModalService = ModalService;
 window.State = State;
 
 function setupNavigation() {

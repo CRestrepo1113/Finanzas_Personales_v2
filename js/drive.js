@@ -1,4 +1,5 @@
 import { State } from './state.js';
+import { ModalService } from './modal.js';
 
 export const DriveService = {
     // --- Credenciales integradas (hardcodeadas para uso inmediato sin configuración) ---
@@ -279,7 +280,7 @@ export const DriveService = {
     async sync(force = false) {
         try {
             if (!this.getClientId()) {
-                if (force) alert("Por favor, introduce tu Google OAuth Client ID antes de sincronizar.");
+                if (force) await ModalService.alert("Por favor, introduce tu Google OAuth Client ID antes de sincronizar.", "Google OAuth Requerido", "info");
                 return false;
             }
 
@@ -320,7 +321,7 @@ export const DriveService = {
                 const now = new Date().toISOString();
                 this.setLastSynced(now);
                 if (this.onStatusChange) this.onStatusChange();
-                if (force) alert("¡Sincronización inicial exitosa! Se ha creado una copia de seguridad en tu Google Drive.");
+                if (force) await ModalService.alert("¡Sincronización inicial exitosa! Se ha creado una copia de seguridad en tu Google Drive.", "Google Drive", "success");
                 return true;
             }
 
@@ -340,7 +341,7 @@ export const DriveService = {
                 const now = new Date().toISOString();
                 this.setLastSynced(now);
                 if (this.onStatusChange) this.onStatusChange();
-                if (force) alert("¡Tus finanzas ya están al día! No se requirieron transferencias.");
+                if (force) await ModalService.alert("¡Tus finanzas ya están al día! No se requirieron transferencias.", "Google Drive", "info");
                 return true;
             }
 
@@ -352,13 +353,14 @@ export const DriveService = {
                 const now = new Date().toISOString();
                 this.setLastSynced(now);
                 if (this.onStatusChange) this.onStatusChange();
-                if (force) alert("¡Sincronización exitosa! Se han subido tus cambios locales a Google Drive.");
+                if (force) await ModalService.alert("¡Sincronización exitosa! Se han subido tus cambios locales a Google Drive.", "Google Drive", "success");
                 return true;
             } else {
                 // CASO 4: Nube es más nueva. Descargar y aplicar.
                 console.log("Los datos en Google Drive son más recientes. Actualizando base de datos local...");
                 
-                if (force || confirm("⚠️ DATOS MÁS RECIENTES EN LA NUBE: Se ha detectado una versión más nueva de tus finanzas en Google Drive. ¿Deseas descargarla y sobreescribir tus datos locales?")) {
+                const shouldDownload = force || await ModalService.confirm("Se ha detectado una versión más reciente de tus finanzas en Google Drive. ¿Deseas descargarla y sobrescribir tus datos locales?", "Datos más recientes en la nube", "Descargar y Actualizar", "Mantener Locales");
+                if (shouldDownload) {
                     await State.importData(remoteState.profiles);
                     // Actualizar el activeProfileId también
                     if (remoteState.activeProfileId) {
@@ -369,7 +371,7 @@ export const DriveService = {
                     const now = new Date().toISOString();
                     this.setLastSynced(now);
                     
-                    alert("¡Sincronización completada! Los datos se han actualizado con la versión en la nube.");
+                    await ModalService.alert("¡Sincronización completada! Los datos se han actualizado con la versión en la nube.", "Google Drive", "success");
                     location.reload(); // Recargar de manera limpia para pintar todo
                     return true;
                 }
@@ -377,7 +379,7 @@ export const DriveService = {
             }
         } catch (error) {
             console.error("Error durante la sincronización con Google Drive:", error);
-            if (force) alert(`Error al sincronizar: ${error.message}`);
+            if (force) await ModalService.alert(`Error al sincronizar: ${error.message}`, "Error de Sincronización", "error");
             return false;
         }
     }

@@ -166,16 +166,37 @@ export const NotificationService = {
                             </span>
                         </div>
                     </div>
-                    <div class="up-status-amount">
+                    <div class="up-status-amount" style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
                         <span style="font-weight: 700; font-family: 'Inconsolata'; font-size: 1rem; color: var(--text-primary);">
                             $${p.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${escapeHTML(baseCurrency)}
                         </span>
-                        <span class="badge ${badgeClass}" style="font-size: 0.75rem; font-weight: bold;">
-                            ${statusText}
-                        </span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="badge ${badgeClass}" style="font-size: 0.75rem; font-weight: bold;">
+                                ${statusText}
+                            </span>
+                            <button type="button" class="btn quick-pay-btn" data-cat-id="${p.category.id}" data-amount="${p.amount}" title="Registrar Pago" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 700; background-color: var(--action-expense); color: #fff; border: 1.5px solid var(--text-primary); border-radius: 4px; box-shadow: 1.5px 1.5px 0px var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-check"></i> Pagar
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
         }).join('');
+
+        // Adjuntar event listeners para registro rápido de pago
+        list.querySelectorAll('.quick-pay-btn').forEach(btn => {
+            btn.onclick = () => {
+                const catId = btn.dataset.catId;
+                const amount = parseFloat(btn.dataset.amount) || 0;
+                const cat = State.db.categories.find(c => String(c.id) === String(catId));
+                if (window.FormService) {
+                    window.FormService.openTransactionModal('expense', {
+                        category_id: catId,
+                        amount: amount > 0 ? amount : '',
+                        notes: `Pago recurrente: ${cat ? cat.name : ''}`
+                    });
+                }
+            };
+        });
     }
 };

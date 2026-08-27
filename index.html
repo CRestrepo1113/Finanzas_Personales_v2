@@ -166,6 +166,14 @@
                         <i class="fas fa-wand-magic-sparkles"></i>
                         <span>Análisis Predictivo</span>
                     </div>
+                    <div class="analytics-menu-card" data-target="analytics-debt-container">
+                        <i class="fas fa-hand-holding-dollar"></i>
+                        <span>Simulador de Deudas</span>
+                    </div>
+                    <div class="analytics-menu-card" data-target="analytics-split-container">
+                        <i class="fas fa-receipt"></i>
+                        <span>Divisor de Gastos</span>
+                    </div>
                     <div class="analytics-menu-card" data-target="analytics-export-container">
                         <i class="fas fa-file-export"></i>
                         <span>Exportar Informes</span>
@@ -174,6 +182,12 @@
 
                 <!-- KPIs de Estadísticas -->
                 <div id="analytics-kpi-container" class="hidden"></div>
+
+                <!-- Panel de Simulador de Deudas -->
+                <div id="analytics-debt-container" class="hidden" style="position: relative; margin-top: 20px;"></div>
+
+                <!-- Panel de Divisor de Gastos -->
+                <div id="analytics-split-container" class="hidden" style="position: relative; margin-top: 20px;"></div>
 
                 <!-- Panel de Análisis Comparativo -->
                 <div id="analytics-compare-container" class="hidden" style="position: relative; margin-top: 20px;"></div>
@@ -959,6 +973,25 @@
                     </div>
                 </div>
                 <button type="button" id="kpi-info-ok-btn" class="btn btn-save" style="margin-top: 20px; width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 6px; box-shadow: 3px 3px 0px var(--text-primary); border: 2.5px solid var(--text-primary); font-family: var(--font-heading); font-weight: bold; cursor: pointer;">Entendido</button>
+            </div>
+        </div>
+
+        <!-- ====== MODAL: DIÁLOGO PERSONALIZADO (ALERT / CONFIRM) ====== -->
+        <div id="custom-dialog-modal" class="modal hidden" style="z-index: 1300;">
+            <div class="modal-content" style="max-width: 440px; padding: 22px; border-radius: 12px 4px 10px 6px; box-shadow: 6px 6px 0px var(--text-primary);">
+                <div class="modal-header" style="border-bottom: 2px dashed var(--text-primary); padding-bottom: 10px; margin-bottom: 14px;">
+                    <h3 style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i id="custom-dialog-icon" class="fas fa-info-circle"></i>
+                        <span id="custom-dialog-title-text">Aviso</span>
+                    </h3>
+                    <button id="custom-dialog-close-x" class="btn-icon" type="button"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="custom-dialog-body" style="font-family: var(--font-body); font-size: 0.95rem; line-height: 1.5; color: var(--text-primary); margin-bottom: 22px; word-break: break-word;">
+                </div>
+                <div id="custom-dialog-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" id="custom-dialog-cancel-btn" class="btn btn-secondary" style="padding: 10px 18px; font-weight: bold; border: 2px solid var(--text-primary); cursor: pointer; border-radius: 6px; box-shadow: 2px 2px 0px var(--text-primary);">Cancelar</button>
+                    <button type="button" id="custom-dialog-confirm-btn" class="btn btn-save" style="padding: 10px 18px; font-weight: bold; border: 2px solid var(--text-primary); cursor: pointer; border-radius: 6px; box-shadow: 2px 2px 0px var(--text-primary);">Aceptar</button>
+                </div>
             </div>
         </div>
     </div>

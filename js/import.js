@@ -1,5 +1,6 @@
 import { State } from './state.js';
 import { DriveService } from './drive.js';
+import { ModalService } from './modal.js';
 
 export const ImportService = {
     init() {
@@ -20,7 +21,7 @@ export const ImportService = {
         // Exponer el servicio globalmente para que state.js pueda consultar el estado
         window.DriveService = DriveService;
 
-        // 1. Evento para abrir y cerrar el modal
+        // 1. Eventos del botón principal de Sincronización en la barra superior
         if (btnCloudSync && modalCloud) {
             btnCloudSync.addEventListener('click', () => {
                 this.updateCloudUI();
@@ -28,20 +29,20 @@ export const ImportService = {
             });
         }
 
+        // 2. Cerrar Modal
         if (btnCloseCloud && modalCloud) {
             btnCloseCloud.addEventListener('click', () => {
                 modalCloud.classList.add('hidden');
             });
         }
 
-        // Cerrar modal al hacer clic fuera del contenido
         if (modalCloud) {
             modalCloud.addEventListener('click', (e) => {
                 if (e.target === modalCloud) modalCloud.classList.add('hidden');
             });
         }
 
-        // 2. Control de Ajustes en el modal
+        // 3. Control de Ajustes en el modal
         if (checkboxAutoSync) {
             checkboxAutoSync.checked = DriveService.getAutoSync();
             checkboxAutoSync.addEventListener('change', (e) => {
@@ -49,7 +50,7 @@ export const ImportService = {
             });
         }
 
-        // 3. Eventos de botones de Google Drive
+        // 4. Eventos de botones de Google Drive
         if (btnConnect) {
             btnConnect.addEventListener('click', async () => {
                 try {
@@ -61,7 +62,7 @@ export const ImportService = {
                     
                     this.updateCloudUI();
                 } catch (error) {
-                    alert(`Error de conexión: ${error.message}`);
+                    await ModalService.alert(`Error de conexión: ${error.message}`, "Conexión a Drive", "error");
                 } finally {
                     btnConnect.disabled = false;
                     btnConnect.innerHTML = '<i class="fab fa-google"></i> Conectar Google Drive';
@@ -78,7 +79,7 @@ export const ImportService = {
                     
                     await DriveService.sync(true);
                 } catch (error) {
-                    alert(`Error de sincronización: ${error.message}`);
+                    await ModalService.alert(`Error de sincronización: ${error.message}`, "Sincronización Drive", "error");
                 } finally {
                     btnSyncNow.disabled = false;
                     btnSyncNow.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Ahora';
@@ -89,15 +90,16 @@ export const ImportService = {
         }
 
         if (btnDisconnect) {
-            btnDisconnect.addEventListener('click', () => {
-                if (confirm("¿Estás seguro de que deseas desconectar tu cuenta de Google Drive? Se detendrá la sincronización en la nube (tus datos locales se conservarán intactos).")) {
+            btnDisconnect.addEventListener('click', async () => {
+                const confirmed = await ModalService.confirm("¿Estás seguro de que deseas desconectar tu cuenta de Google Drive? Se detendrá la sincronización en la nube (tus datos locales se conservarán intactos).", "Desconectar Cuenta", "Desconectar", "Cancelar");
+                if (confirmed) {
                     DriveService.disconnect();
                     this.updateCloudUI();
                 }
             });
         }
 
-        // 4. Configurar callbacks en DriveService para mantener la UI sincronizada
+        // 5. Configurar callbacks en DriveService para mantener la UI sincronizada
         DriveService.onStatusChange = () => {
             this.updateCloudUI();
         };
@@ -238,13 +240,14 @@ export const ImportService = {
         reader.readAsArrayBuffer(file);
     },
 
-    exportCSV() {
+    async exportCSV() {
         if (!State.profilesState) {
-            alert("Error: El estado de los perfiles no se ha cargado correctamente.");
+            await ModalService.alert("Error: El estado de los perfiles no se ha cargado correctamente.", "Error de Exportación", "error");
             return;
         }
 
-        if (!confirm('⚠️ COPIA DE SEGURIDAD LOCAL: ¿Deseas exportar una copia de seguridad consolidada de TODOS tus perfiles financieros en un archivo CSV?')) return;
+        const confirmed = await ModalService.confirm('¿Deseas exportar una copia de seguridad consolidada de TODOS tus perfiles financieros en un archivo CSV?', "Copia de Seguridad Local", "Exportar CSV", "Cancelar");
+        if (!confirmed) return;
 
         // Función de sanitización para prevenir Inyección de Fórmulas CSV
         const sanitizeCSVField = (val) => {
@@ -307,11 +310,12 @@ export const ImportService = {
         text = text.replace(/^\uFEFF/, '');
 
         if (!text.includes('### BLOQUE_CUENTAS ###') && !text.includes('###BLOQUE_CUENTAS###')) {
-            alert("Error: El archivo no tiene el formato de backup correcto. Asegúrate de exportar desde esta misma aplicación usando el botón 'Exportar CSV'.");
+            await ModalService.alert("Error: El archivo no tiene el formato de backup correcto. Asegúrate de exportar desde esta misma aplicación usando el botón 'Exportar CSV'.", "Formato Inválido", "error");
             return;
         }
 
-        if (!confirm("⚠️ ADVERTENCIA CRÍTICA: Importar esta copia de seguridad sobrescribirá TODOS tus perfiles y datos financieros actuales de forma irreversible. ¿Confirmas esta acción?")) {
+        const confirmed = await ModalService.confirm("⚠️ ADVERTENCIA CRÍTICA: Importar esta copia de seguridad sobrescribirá TODOS tus perfiles y datos financieros actuales de forma irreversible. ¿Confirmas esta acción?", "Sobrescribir Datos Locales", "Importar y Sobrescribir", "Cancelar");
+        if (!confirmed) {
             return;
         }
 
@@ -327,7 +331,7 @@ export const ImportService = {
         let profiles = [];
         let currentProfile = null;
 
-        const parseLine = (str) => {
+        const parseCSVLine = (str) => {
             const arr = []; let inQuote = false; let val = "";
             for (let i = 0; i < str.length; i++) {
                 const c = str[i];
@@ -443,7 +447,7 @@ export const ImportService = {
 
         if (profiles.length > 0) {
             await State.importData(profiles);
-            alert(`¡Éxito! Se han importado de forma local ${profiles.length} perfil(es) con todos sus datos financieros.`);
+            await ModalService.alert(`¡Éxito! Se han importado de forma local ${profiles.length} perfil(es) con todos sus datos financieros.`, "Importación Exitosa", "success");
             location.reload(); // Recargar para aplicar y renderizar
         }
     }

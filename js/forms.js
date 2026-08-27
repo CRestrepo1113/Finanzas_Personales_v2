@@ -1,6 +1,7 @@
 import { State } from './state.js';
 import { UI, escapeHTML } from './ui.js';
 import { CalculatorService } from './calculator.js';
+import { ModalService } from './modal.js';
 
 
 export const FormService = {
@@ -251,7 +252,7 @@ export const FormService = {
 
     // --- MODALES DE TRANSACCIÓN ---
 
-    openTransactionModal(type) {
+    openTransactionModal(type, prefill = {}) {
         this.currentType = type;
         const modal = document.getElementById('transaction-modal');
         const title = document.getElementById('modal-title');
@@ -267,9 +268,13 @@ export const FormService = {
         document.getElementById('tx-id').value = '';
         accSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
         catSelect.innerHTML = State.db.categories.filter(c => c.type === type).map(c => `<option value="${c.id}">${escapeHTML(c.name)}</option>`).join('');
-        document.getElementById('tx-date').value = this.getLocalDateString();
-        document.getElementById('tx-amount').value = '';
-        document.getElementById('tx-notes').value = '';
+        document.getElementById('tx-date').value = prefill.date || this.getLocalDateString();
+        document.getElementById('tx-amount').value = prefill.amount !== undefined ? prefill.amount : '';
+        document.getElementById('tx-notes').value = prefill.notes || '';
+
+        if (prefill.account_id) accSelect.value = prefill.account_id;
+        if (prefill.category_id) catSelect.value = prefill.category_id;
+
         modal.classList.remove('hidden');
     },
 
@@ -395,7 +400,7 @@ export const FormService = {
 
         if (tx.type === 'transfer') {
             if (tx.from_profile_id) {
-                alert("Esta transferencia se originó en otro perfil. Para editar sus datos, por favor cámbiate al perfil de origen.");
+                ModalService.alert("Esta transferencia se originó en otro perfil. Para editar sus datos, por favor cámbiate al perfil de origen.", "Perfil de Origen Requerido");
                 return;
             }
 
@@ -709,7 +714,8 @@ export const FormService = {
         }
 
         if (fromId === toAccountId && toProfileId === State.profilesState.activeProfileId) {
-            return alert("Cuentas idénticas");
+            ModalService.alert("La cuenta de origen y destino no pueden ser iguales.", "Validación de Transferencia");
+            return;
         }
         
         const fromAccount = State.db.accounts.find(a => String(a.id) === String(fromId));
@@ -723,7 +729,10 @@ export const FormService = {
             }
         }
         
-        if (!fromAccount || !toAccount) return alert("Error al encontrar las cuentas");
+        if (!fromAccount || !toAccount) {
+            ModalService.alert("No se pudieron encontrar las cuentas involucradas en la transferencia.", "Error de Cuenta", "error");
+            return;
+        }
         
         let amountReceived = amount;
         let exchangeRate = 1;
@@ -825,51 +834,56 @@ export const FormService = {
         this.hideModal('transfer-modal');
     },
 
-    handleTransactionDelete() {
+    async handleTransactionDelete() {
         const id = document.getElementById('tx-id').value;
         if (!id) return;
         
-        if (confirm("¿Estás seguro de que deseas eliminar permanentemente este movimiento?")) {
+        const confirmed = await ModalService.confirm("¿Estás seguro de que deseas eliminar permanentemente este movimiento?", "Eliminar Movimiento");
+        if (confirmed) {
             State.deleteTransaction(id);
             this.hideModal('transaction-modal');
         }
     },
 
-    handleTransferDelete() {
+    async handleTransferDelete() {
         const id = document.getElementById('trans-id').value;
         if (!id) return;
         
-        if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta transferencia?")) {
+        const confirmed = await ModalService.confirm("¿Estás seguro de que deseas eliminar permanentemente esta transferencia?", "Eliminar Transferencia");
+        if (confirmed) {
             State.deleteTransaction(id);
             this.hideModal('transfer-modal');
         }
     },
 
-    handleAccountDelete() {
+    async handleAccountDelete() {
         const id = document.getElementById('acc-id').value;
         if (!id) return;
 
-        if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta cuenta? Se eliminarán también todos sus movimientos y se desvinculará de las metas.")) {
+        const confirmed = await ModalService.confirm("¿Estás seguro de que deseas eliminar permanentemente esta cuenta? Se eliminarán también todos sus movimientos y se desvinculará de las metas.", "Eliminar Cuenta");
+        if (confirmed) {
             State.deleteAccount(id);
             this.hideModal('account-modal');
         }
     },
 
-    handleCategoryDelete() {
+    async handleCategoryDelete() {
         const id = document.getElementById('cat-id').value;
         if (!id) return;
 
-        if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta categoría? Se eliminarán también todas sus transacciones.")) {
+        const confirmed = await ModalService.confirm("¿Estás seguro de que deseas eliminar permanentemente esta categoría? Se eliminarán también todas sus transacciones.", "Eliminar Categoría");
+        if (confirmed) {
             State.deleteCategory(id);
             this.hideModal('category-modal');
         }
     },
 
-    handleGoalDelete() {
+    async handleGoalDelete() {
         const id = document.getElementById('goal-id').value;
         if (!id) return;
 
-        if (confirm("¿Estás seguro de que deseas eliminar permanentemente esta meta de ahorro?")) {
+        const confirmed = await ModalService.confirm("¿Estás seguro de que deseas eliminar permanentemente esta meta de ahorro?", "Eliminar Meta de Ahorro");
+        if (confirmed) {
             State.deleteGoal(id);
             this.hideModal('goal-modal');
         }
@@ -1021,12 +1035,12 @@ export const FormService = {
         if (!p) return;
 
         if (State.profilesState.profiles.length <= 1) {
-            alert("No puedes eliminar el único perfil disponible.");
+            ModalService.alert("No puedes eliminar el único perfil disponible.", "Perfil Único");
             return;
         }
 
-        const conf = prompt(`Para eliminar permanentemente el perfil "${p.name}" y todo su historial financiero, escribe la palabra "ELIMINAR" en mayúsculas:`);
-        if (conf === 'ELIMINAR') {
+        const confirmed = await ModalService.confirm(`¿Estás seguro de que deseas eliminar permanentemente el perfil "${p.name}" y todo su historial financiero? Esta acción es irreversible.`, "Eliminar Perfil", "Eliminar Perfil", "Cancelar");
+        if (confirmed) {
             await State.deleteProfile(id);
             this.hideModal('profile-edit-modal');
         }

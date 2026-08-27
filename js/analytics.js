@@ -1,6 +1,7 @@
 import { State } from './state.js';
-import { getLocalDateComponents, standardizeDate } from './ui.js';
+import { getLocalDateComponents, standardizeDate, escapeHTML } from './ui.js';
 import { ExportService } from './export.js';
+import { ModalService } from './modal.js';
 
 export const Analytics = {
     charts: {
@@ -827,6 +828,8 @@ export const Analytics = {
             'budget-progress-container',
             'analytics-compare-container',
             'analytics-predictive-container',
+            'analytics-debt-container',
+            'analytics-split-container',
             'analytics-export-container'
         ];
         sections.forEach(id => {
@@ -855,6 +858,8 @@ export const Analytics = {
             'budget-progress-container',
             'analytics-compare-container',
             'analytics-predictive-container',
+            'analytics-debt-container',
+            'analytics-split-container',
             'analytics-export-container'
         ];
         sections.forEach(id => {
@@ -1138,6 +1143,8 @@ export const Analytics = {
         this.renderKPIs();
         this.renderComparisonPanel();
         this.renderPredictivePanel();
+        this.renderDebtSimulator();
+        this.renderSplitBill();
         this.renderExpensesChart();
         this.renderNetWorthChart();
         this.renderZbbRuleChart();
@@ -2270,5 +2277,520 @@ export const Analytics = {
                 </div>
             `;
         }).join('');
+    },
+
+    renderDebtSimulator() {
+        const container = document.getElementById('analytics-debt-container');
+        if (!container) return;
+
+        const { accounts } = State.db;
+        const baseCurrency = State.db.settings.baseCurrency || 'USD';
+        const rates = State.db.settings.exchangeRates || {};
+
+        // Recopilar deudas registradas
+        const debtAccounts = accounts.filter(a => a.type === 'debt' && a.balance > 0);
+        
+        let debtsData = debtAccounts.map(a => {
+            const rate = rates[a.currency] || 1;
+            const balInBase = a.balance / rate;
+            return {
+                id: a.id,
+                name: a.name,
+                currency: a.currency,
+                balance: balInBase,
+                apr: 18.0, // Tasa estándar por defecto si no está seteada
+                minPayment: Math.max(25, Math.round(balInBase * 0.03)) // 3% del saldo o $25
+            };
+        });
+
+        // Guardar estado en el objeto de Analytics para persistir ediciones en la vista actual
+        if (!this._debtSimState) {
+            this._debtSimState = {
+                extraMonthly: 100,
+                customDebts: debtsData.length > 0 ? debtsData : [
+                    { id: 'd1', name: 'Tarjeta de Crédito', balance: 2500, apr: 22.5, minPayment: 75 },
+                    { id: 'd2', name: 'Préstamo Personal', balance: 5000, apr: 14.0, minPayment: 150 },
+                    { id: 'd3', name: 'Crédito Vehicular', balance: 8000, apr: 9.5, minPayment: 220 }
+                ]
+            };
+        }
+
+        const extraMonthly = this._debtSimState.extraMonthly;
+        const debts = this._debtSimState.customDebts;
+
+        // Motor de Simulación
+        const runSimulation = (strategy, extra) => {
+            if (debts.length === 0) return { months: 0, monthsNum: 0, interest: 0, totalPaid: 0 };
+
+            let list = debts.map(d => ({
+                name: d.name,
+                balance: parseFloat(d.balance) || 0,
+                apr: parseFloat(d.apr) || 0,
+                minPayment: parseFloat(d.minPayment) || 0
+            })).filter(d => d.balance > 0);
+
+            if (list.length === 0) return { months: 0, monthsNum: 0, interest: 0, totalPaid: 0 };
+
+            if (strategy === 'snowball') {
+                list.sort((a, b) => a.balance - b.balance);
+            } else if (strategy === 'avalanche') {
+                list.sort((a, b) => b.apr - a.apr);
+            }
+
+            const initialTotalMin = list.reduce((sum, d) => sum + d.minPayment, 0);
+            const totalBudget = initialTotalMin + (strategy === 'min' ? 0 : extra);
+
+            let months = 0;
+            let totalInterest = 0;
+            const maxMonths = 480; // 40 años límite
+
+            while (list.some(d => d.balance > 0.01) && months < maxMonths) {
+                months++;
+                let availablePool = totalBudget;
+
+                // 1. Cobro de interés mensual
+                list.forEach(d => {
+                    if (d.balance > 0.01) {
+                        const monthlyRate = (d.apr / 100) / 12;
+                        const interest = d.balance * monthlyRate;
+                        d.balance += interest;
+                        totalInterest += interest;
+                    }
+                });
+
+                // 2. Pago de cuotas mínimas
+                list.forEach(d => {
+                    if (d.balance > 0.01) {
+                        const pay = Math.min(d.balance, d.minPayment);
+                        d.balance -= pay;
+                        availablePool -= pay;
+                    }
+                });
+
+                // 3. Vuelco de remanente (Snowball o Avalanche) a la deuda prioritaria
+                if (strategy !== 'min' && availablePool > 0) {
+                    for (let d of list) {
+                        if (d.balance > 0.01) {
+                            const extraPay = Math.min(d.balance, availablePool);
+                            d.balance -= extraPay;
+                            availablePool -= extraPay;
+                            if (availablePool <= 0.01) break;
+                        }
+                    }
+                }
+            }
+
+            const totalPrincipal = debts.reduce((sum, d) => sum + (parseFloat(d.balance) || 0), 0);
+            return {
+                months: months >= maxMonths ? '> 40 años' : months,
+                monthsNum: months,
+                interest: totalInterest,
+                totalPaid: totalPrincipal + totalInterest
+            };
+        };
+
+        const resSnowball = runSimulation('snowball', extraMonthly);
+        const resAvalanche = runSimulation('avalanche', extraMonthly);
+        const resMin = runSimulation('min', 0);
+
+        const interestSaved = Math.max(0, resMin.interest - resAvalanche.interest);
+        const monthsSaved = typeof resMin.monthsNum === 'number' && typeof resAvalanche.monthsNum === 'number'
+            ? Math.max(0, resMin.monthsNum - resAvalanche.monthsNum) : 0;
+
+        container.innerHTML = `
+            <div class="settings-card" style="margin-bottom: 25px; border: 2.5px solid var(--text-primary); border-radius: 12px 4px 10px 6px; padding: 20px; background-color: var(--bg-card); box-shadow: var(--shadow-neo);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; border-bottom: 2px dashed var(--text-primary); padding-bottom: 12px;">
+                    <div>
+                        <h3 style="margin: 0; font-family: var(--font-heading); font-size: 1.3rem; font-weight: bold; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-hand-holding-dollar" style="color: var(--action-expense);"></i>
+                            Simulador de Amortización de Deudas
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">Compara matemáticamente la velocidad y el ahorro entre el método Bola de Nieve vs Avalancha.</p>
+                    </div>
+                </div>
+
+                <!-- Input de Aporte Extra Mensual -->
+                <div style="background: rgba(0,0,0,0.03); border: 2px solid var(--text-primary); border-radius: 8px; padding: 15px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <strong style="font-size: 1rem; color: var(--text-primary); display: block;">Pago Mensual Acelerador (Extra)</strong>
+                        <span style="font-size: 0.82rem; color: var(--text-secondary);">Monto adicional que puedes aportar al mes por encima de los pagos mínimos.</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-family: var(--font-heading); font-weight: bold; font-size: 1.2rem;">$</span>
+                        <input type="number" id="debt-extra-input" class="filter-select" style="width: 130px; font-size: 1.15rem; font-weight: bold; text-align: right; padding: 8px; font-family: 'Inconsolata';" value="${extraMonthly}">
+                    </div>
+                </div>
+
+                <!-- Tarjetas de Comparativa de Estrategias -->
+                <div class="compare-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 25px;">
+                    <!-- AVALANCHA -->
+                    <div class="compare-card" style="border: 2.5px solid var(--text-primary); background: #E8F0E8; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: 800; font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-primary);">Método Avalancha</span>
+                            <span class="badge" style="background: #2E7D32; color: #fff; font-size: 0.7rem; font-weight: bold;">Máximo Ahorro</span>
+                        </div>
+                        <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px;">Prioriza liquidar primero las deudas con <strong>mayor tasa de interés (APR)</strong>.</p>
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'Inconsolata';">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
+                                <span>Tiempo para liquidar:</span>
+                                <strong>${resAvalanche.months} meses (${(resAvalanche.monthsNum / 12).toFixed(1)} años)</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
+                                <span>Intereses totales:</span>
+                                <strong style="color: var(--action-expense);">$${Math.round(resAvalanche.interest).toLocaleString('es-ES')}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 6px;">
+                                <span>Desembolso total:</span>
+                                <strong>$${Math.round(resAvalanche.totalPaid).toLocaleString('es-ES')}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BOLA DE NIEVE -->
+                    <div class="compare-card" style="border: 2.5px solid var(--text-primary); background: #EBF3F5; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: 800; font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-primary);">Método Bola de Nieve</span>
+                            <span class="badge" style="background: #0288D1; color: #fff; font-size: 0.7rem; font-weight: bold;">Impulso Psicológico</span>
+                        </div>
+                        <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px;">Prioriza liquidar primero las deudas con <strong>menor saldo pendiente</strong>.</p>
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'Inconsolata';">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
+                                <span>Tiempo para liquidar:</span>
+                                <strong>${resSnowball.months} meses (${(resSnowball.monthsNum / 12).toFixed(1)} años)</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
+                                <span>Intereses totales:</span>
+                                <strong style="color: var(--action-expense);">$${Math.round(resSnowball.interest).toLocaleString('es-ES')}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 6px;">
+                                <span>Desembolso total:</span>
+                                <strong>$${Math.round(resSnowball.totalPaid).toLocaleString('es-ES')}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SOLO PAGOS MÍNIMOS -->
+                    <div class="compare-card" style="border: 2.5px solid var(--text-primary); background: #FDF4E7; opacity: 0.9;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: 800; font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-primary);">Solo Pagos Mínimos</span>
+                            <span class="badge" style="background: #E65100; color: #fff; font-size: 0.7rem; font-weight: bold;">Línea Base</span>
+                        </div>
+                        <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 12px;">Sin aportar ningún monto extra mensual.</p>
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'Inconsolata';">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
+                                <span>Tiempo para liquidar:</span>
+                                <strong>${resMin.months} meses</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem;">
+                                <span>Intereses totales:</span>
+                                <strong style="color: var(--action-expense);">$${Math.round(resMin.interest).toLocaleString('es-ES')}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.95rem; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 6px;">
+                                <span>Desembolso total:</span>
+                                <strong>$${Math.round(resMin.totalPaid).toLocaleString('es-ES')}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen de Ahorro y Conclusión -->
+                <div style="background: var(--bg-primary); border: 2px solid var(--text-primary); border-radius: 8px; padding: 15px; margin-bottom: 25px; box-shadow: 2px 2px 0px var(--text-primary);">
+                    <h4 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 800; margin-bottom: 8px; color: var(--text-primary);">
+                        <i class="fa-solid fa-trophy" style="color: var(--accent-gold);"></i> Conclusión Financiera
+                    </h4>
+                    <p style="font-size: 0.9rem; line-height: 1.5; color: var(--text-primary); margin: 0;">
+                        Aplicar el método Avalancha con tu aporte extra te ahorra aproximadamente <strong>$${Math.round(interestSaved).toLocaleString('es-ES')} ${baseCurrency}</strong> en intereses y te libera de deudas <strong>${monthsSaved} meses antes</strong> en comparación con pagar solo los montos mínimos.
+                    </p>
+                </div>
+
+                <!-- Tabla Interactiva de Deudas Incluidas -->
+                <div style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="margin: 0; font-family: var(--font-heading); font-size: 1.15rem; font-weight: bold;">Deudas en el Simulador</h4>
+                        <button type="button" id="debt-add-row-btn" class="btn btn-save" style="padding: 6px 12px; font-size: 0.82rem; margin: 0; box-shadow: 1.5px 1.5px 0px var(--text-primary);">
+                            <i class="fas fa-plus"></i> Añadir Deuda
+                        </button>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;" id="debt-items-list">
+                        ${debts.map((d, idx) => `
+                            <div class="transaction-item" style="padding: 12px; background: var(--bg-primary); border: 2px solid var(--text-primary); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                <div style="flex: 1; min-width: 140px;">
+                                    <input type="text" class="debt-name-input filter-select" data-idx="${idx}" value="${escapeHTML(d.name)}" style="width: 100%; font-weight: bold; padding: 6px;" placeholder="Nombre de la deuda">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <div>
+                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block;">Saldo ($)</label>
+                                        <input type="number" class="debt-bal-input filter-select" data-idx="${idx}" value="${d.balance}" style="width: 100px; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block;">APR (%)</label>
+                                        <input type="number" step="0.1" class="debt-apr-input filter-select" data-idx="${idx}" value="${d.apr}" style="width: 75px; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block;">Pago Mín ($)</label>
+                                        <input type="number" class="debt-min-input filter-select" data-idx="${idx}" value="${d.minPayment}" style="width: 85px; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
+                                    </div>
+                                    <button type="button" class="btn-icon debt-del-btn" data-idx="${idx}" title="Eliminar deuda" style="margin-top: 14px; padding: 6px;">
+                                        <i class="fas fa-trash-alt" style="color: var(--action-expense);"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Listeners interactivos del Simulador de Deudas
+        const extraInput = document.getElementById('debt-extra-input');
+        if (extraInput) {
+            extraInput.oninput = (e) => {
+                const val = parseFloat(e.target.value) || 0;
+                this._debtSimState.extraMonthly = val;
+                this.renderDebtSimulator();
+            };
+        }
+
+        const addRowBtn = document.getElementById('debt-add-row-btn');
+        if (addRowBtn) {
+            addRowBtn.onclick = () => {
+                this._debtSimState.customDebts.push({
+                    id: 'd_' + Date.now(),
+                    name: 'Nueva Deuda',
+                    balance: 1000,
+                    apr: 18.0,
+                    minPayment: 50
+                });
+                this.renderDebtSimulator();
+            };
+        }
+
+        container.querySelectorAll('.debt-name-input').forEach(input => {
+            input.onchange = (e) => {
+                const idx = parseInt(e.target.dataset.idx, 10);
+                if (this._debtSimState.customDebts[idx]) {
+                    this._debtSimState.customDebts[idx].name = e.target.value;
+                }
+            };
+        });
+
+        container.querySelectorAll('.debt-bal-input').forEach(input => {
+            input.oninput = (e) => {
+                const idx = parseInt(e.target.dataset.idx, 10);
+                if (this._debtSimState.customDebts[idx]) {
+                    this._debtSimState.customDebts[idx].balance = parseFloat(e.target.value) || 0;
+                    this.renderDebtSimulator();
+                }
+            };
+        });
+
+        container.querySelectorAll('.debt-apr-input').forEach(input => {
+            input.oninput = (e) => {
+                const idx = parseInt(e.target.dataset.idx, 10);
+                if (this._debtSimState.customDebts[idx]) {
+                    this._debtSimState.customDebts[idx].apr = parseFloat(e.target.value) || 0;
+                    this.renderDebtSimulator();
+                }
+            };
+        });
+
+        container.querySelectorAll('.debt-min-input').forEach(input => {
+            input.oninput = (e) => {
+                const idx = parseInt(e.target.dataset.idx, 10);
+                if (this._debtSimState.customDebts[idx]) {
+                    this._debtSimState.customDebts[idx].minPayment = parseFloat(e.target.value) || 0;
+                    this.renderDebtSimulator();
+                }
+            };
+        });
+
+        container.querySelectorAll('.debt-del-btn').forEach(btn => {
+            btn.onclick = () => {
+                const idx = parseInt(btn.dataset.idx, 10);
+                this._debtSimState.customDebts.splice(idx, 1);
+                this.renderDebtSimulator();
+            };
+        });
+    },
+
+    renderSplitBill() {
+        const container = document.getElementById('analytics-split-container');
+        if (!container) return;
+
+        const baseCurrency = State.db.settings.baseCurrency || 'USD';
+
+        if (!this._splitState) {
+            this._splitState = {
+                subtotal: 120.00,
+                tipPercent: 15,
+                taxPercent: 0,
+                numPeople: 3,
+                mode: 'equal'
+            };
+        }
+
+        const state = this._splitState;
+        const subtotal = state.subtotal;
+        const tipAmount = subtotal * (state.tipPercent / 100);
+        const taxAmount = subtotal * (state.taxPercent / 100);
+        const grandTotal = subtotal + tipAmount + taxAmount;
+        const perPersonEqual = state.numPeople > 0 ? (grandTotal / state.numPeople) : 0;
+
+        container.innerHTML = `
+            <div class="settings-card" style="margin-bottom: 25px; border: 2.5px solid var(--text-primary); border-radius: 12px 4px 10px 6px; padding: 20px; background-color: var(--bg-card); box-shadow: var(--shadow-neo);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; border-bottom: 2px dashed var(--text-primary); padding-bottom: 12px;">
+                    <div>
+                        <h3 style="margin: 0; font-family: var(--font-heading); font-size: 1.3rem; font-weight: bold; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-receipt" style="color: var(--action-income);"></i>
+                            Divisor de Gastos Compartidos (Split Bills)
+                        </h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">Calcula propinas, impuestos y reparte cuentas grupales de forma justa e instantánea.</p>
+                    </div>
+                </div>
+
+                <!-- Entradas Generales -->
+                <div class="compare-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; display: block;">Monto de la Cuenta (Subtotal)</label>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-family: var(--font-heading); font-weight: bold; font-size: 1.2rem;">$</span>
+                            <input type="number" id="split-subtotal" class="filter-select" style="width: 100%; font-size: 1.2rem; font-weight: bold; font-family: 'Inconsolata'; padding: 8px;" value="${subtotal}">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; display: block;">Número de Personas</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" id="split-person-dec" class="btn btn-secondary" style="padding: 8px 14px; font-weight: bold; font-size: 1.1rem; border: 2px solid var(--text-primary);">-</button>
+                            <input type="number" id="split-num-people" class="filter-select" style="flex: 1; text-align: center; font-size: 1.15rem; font-weight: bold; font-family: 'Inconsolata'; padding: 8px;" value="${state.numPeople}" min="1">
+                            <button type="button" id="split-person-inc" class="btn btn-secondary" style="padding: 8px 14px; font-weight: bold; font-size: 1.1rem; border: 2px solid var(--text-primary);">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selector de Propina -->
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: bold; font-size: 0.9rem; margin-bottom: 8px; display: block;">Propina: ${state.tipPercent}% ($${tipAmount.toFixed(2)})</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        ${[0, 10, 15, 18, 20].map(tip => `
+                            <button type="button" class="btn split-tip-btn ${state.tipPercent === tip ? 'btn-save' : 'btn-secondary'}" data-tip="${tip}" style="padding: 8px 14px; font-size: 0.9rem; font-weight: bold; border: 2px solid var(--text-primary); border-radius: 6px; box-shadow: 1.5px 1.5px 0px var(--text-primary); cursor: pointer;">
+                                ${tip}%
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Resumen de Totales -->
+                <div style="background: rgba(0,0,0,0.03); border: 2px solid var(--text-primary); border-radius: 8px; padding: 18px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-family: 'Inconsolata'; font-size: 0.95rem;">
+                        <span>Subtotal:</span>
+                        <strong>$${subtotal.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-family: 'Inconsolata'; font-size: 0.95rem;">
+                        <span>Propina (${state.tipPercent}%):</span>
+                        <strong>$${tipAmount.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 2px solid var(--text-primary); padding-top: 10px; margin-top: 8px; font-family: 'Inconsolata'; font-size: 1.25rem;">
+                        <span style="font-weight: bold;">TOTAL GENERAL:</span>
+                        <strong style="color: var(--action-income);">$${grandTotal.toFixed(2)} ${baseCurrency}</strong>
+                    </div>
+                </div>
+
+                <!-- Resultado por Persona -->
+                <div style="background: #FFF9E6; border: 2.5px solid var(--text-primary); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 20px; box-shadow: 3px 3px 0px var(--text-primary);">
+                    <span style="font-size: 0.95rem; font-weight: bold; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Cada persona paga</span>
+                    <h2 style="margin: 8px 0; font-family: var(--font-heading); font-size: 2.3rem; font-weight: 900; color: var(--text-primary);">$${perPersonEqual.toFixed(2)} <span style="font-size: 1.1rem; font-family: var(--font-body);">${baseCurrency}</span></h2>
+                    <span style="font-size: 0.85rem; color: var(--text-secondary);">División equitativa entre ${state.numPeople} persona(s)</span>
+                </div>
+
+                <!-- Acciones Rápidas -->
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button type="button" id="split-copy-btn" class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 0.95rem; font-weight: bold; border: 2px solid var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 2px 2px 0px var(--text-primary);">
+                        <i class="fas fa-copy"></i> Copiar Desglose para WhatsApp
+                    </button>
+                    <button type="button" id="split-record-expense-btn" class="btn btn-save" style="flex: 1; padding: 12px; font-size: 0.95rem; font-weight: bold; border: 2px solid var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 2px 2px 0px var(--text-primary);">
+                        <i class="fas fa-arrow-up"></i> Registrar Mi Parte como Gasto
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Listeners interactivos del Divisor de Gastos
+        const subtotalInput = document.getElementById('split-subtotal');
+        if (subtotalInput) {
+            subtotalInput.oninput = (e) => {
+                this._splitState.subtotal = parseFloat(e.target.value) || 0;
+                this.renderSplitBill();
+            };
+        }
+
+        const numInput = document.getElementById('split-num-people');
+        if (numInput) {
+            numInput.oninput = (e) => {
+                this._splitState.numPeople = Math.max(1, parseInt(e.target.value, 10) || 1);
+                this.renderSplitBill();
+            };
+        }
+
+        const decBtn = document.getElementById('split-person-dec');
+        if (decBtn) {
+            decBtn.onclick = () => {
+                this._splitState.numPeople = Math.max(1, this._splitState.numPeople - 1);
+                this.renderSplitBill();
+            };
+        }
+
+        const incBtn = document.getElementById('split-person-inc');
+        if (incBtn) {
+            incBtn.onclick = () => {
+                this._splitState.numPeople = this._splitState.numPeople + 1;
+                this.renderSplitBill();
+            };
+        }
+
+        container.querySelectorAll('.split-tip-btn').forEach(btn => {
+            btn.onclick = () => {
+                this._splitState.tipPercent = parseInt(btn.dataset.tip, 10);
+                this.renderSplitBill();
+            };
+        });
+
+        const copyBtn = document.getElementById('split-copy-btn');
+        if (copyBtn) {
+            copyBtn.onclick = async () => {
+                const text = `🧾 *Desglose de Cuenta Compartida*\n` +
+                    `--------------------------------\n` +
+                    `💵 Subtotal: $${subtotal.toFixed(2)} ${baseCurrency}\n` +
+                    `✨ Propina (${state.tipPercent}%): $${tipAmount.toFixed(2)} ${baseCurrency}\n` +
+                    `💰 Total General: $${grandTotal.toFixed(2)} ${baseCurrency}\n` +
+                    `👥 Participantes: ${state.numPeople}\n` +
+                    `--------------------------------\n` +
+                    `👉 *Pago por persona: $${perPersonEqual.toFixed(2)} ${baseCurrency}*\n` +
+                    `--------------------------------\n` +
+                    `_Calculado con Finanzas Personales v2_`;
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        await ModalService.alert("El desglose de la cuenta se ha copiado al portapapeles. ¡Listo para pegar en WhatsApp o mensajes!", "Copiado con Éxito", "success");
+                    } catch (e) {
+                        await ModalService.alert("No se pudo copiar automáticamente. Puedes seleccionar el texto manualmente.", "Aviso");
+                    }
+                }
+            };
+        }
+
+        const recordExpenseBtn = document.getElementById('split-record-expense-btn');
+        if (recordExpenseBtn) {
+            recordExpenseBtn.onclick = () => {
+                if (window.FormService) {
+                    window.FormService.openTransactionModal('expense', {
+                        amount: perPersonEqual.toFixed(2),
+                        notes: `Cuenta compartida (${state.numPeople} personas, propina ${state.tipPercent}%)`
+                    });
+                }
+            };
+        }
     }
 };

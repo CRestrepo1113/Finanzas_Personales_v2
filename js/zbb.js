@@ -1,5 +1,6 @@
 import { State } from './state.js';
 import { escapeHTML } from './ui.js';
+import { ModalService } from './modal.js';
 
 export const ZBBService = {
     init() {
@@ -257,7 +258,7 @@ export const ZBBService = {
         });
 
         State.updateCategoryBudgets(catUpdates, income, accUpdates);
-        alert("Presupuesto guardado y sincronizado con tus categorías y cuentas.");
+        ModalService.alert("Presupuesto guardado y sincronizado con tus categorías y cuentas.", "Presupuesto ZBB", "success");
     }
 };
 
