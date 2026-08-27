@@ -73,7 +73,16 @@ class StateManager {
         }
 
         if (migrated) {
-            this.save();
+            this.save(true);
+        }
+
+        if (typeof window !== 'undefined' && !this._beforeUnloadAttached) {
+            this._beforeUnloadAttached = true;
+            window.addEventListener('beforeunload', () => {
+                if (this.profilesState) {
+                    StorageService.saveProfiles(this.profilesState, true);
+                }
+            });
         }
 
         this.notify();
@@ -95,14 +104,14 @@ class StateManager {
         this.save();
     }
 
-    async save() {
+    async save(immediate = false) {
         if (this.profilesState) {
             this.profilesState.lastModified = new Date().toISOString();
         }
-        await StorageService.saveProfiles(this.profilesState);
+        await StorageService.saveProfiles(this.profilesState, immediate);
         
         // Sincronización automática en segundo plano (debounce de 5 segundos)
-        if (window.DriveService && window.DriveService.isConnected() && window.DriveService.getAutoSync()) {
+        if (typeof window !== 'undefined' && window.DriveService && window.DriveService.isConnected() && window.DriveService.getAutoSync()) {
             if (this.syncTimeout) clearTimeout(this.syncTimeout);
             this.syncTimeout = setTimeout(() => {
                 window.DriveService.sync(false).catch(err => {
@@ -115,13 +124,13 @@ class StateManager {
     async importData(profiles) {
         this.profilesState.profiles = profiles;
         this.profilesState.activeProfileId = profiles[0].id;
-        await this.save();
+        await this.save(true);
     }
 
     async switchProfile(id) {
         if (this.profilesState.profiles.some(p => String(p.id) === String(id))) {
             this.profilesState.activeProfileId = id;
-            await this.save();
+            await this.save(true);
             location.reload();
         }
     }
@@ -136,7 +145,7 @@ class StateManager {
             color: color || '#8C9970',
             icon: icon || 'fa-user'
         });
-        await this.save();
+        await this.save(true);
         location.reload();
     }
 
@@ -146,7 +155,7 @@ class StateManager {
             p.name = name.trim();
             p.color = color;
             p.icon = icon;
-            await this.save();
+            await this.save(true);
             location.reload();
         }
     }
@@ -160,7 +169,7 @@ class StateManager {
         if (String(this.profilesState.activeProfileId) === String(id)) {
             this.profilesState.activeProfileId = this.profilesState.profiles[0].id;
         }
-        await this.save();
+        await this.save(true);
         location.reload();
         return true;
     }

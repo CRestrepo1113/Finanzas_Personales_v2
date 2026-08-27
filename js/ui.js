@@ -103,9 +103,20 @@ export const UI = {
         transactionsList: document.getElementById('transactions-list'),
         exchangeRates: document.getElementById('settings-exchange-rates')
     },
+    renderPending: false,
+
+    scheduleRender() {
+        if (this.renderPending) return;
+        this.renderPending = true;
+        const raf = typeof requestAnimationFrame !== 'undefined' ? requestAnimationFrame : (cb) => setTimeout(cb, 16);
+        raf(() => {
+            this.renderPending = false;
+            this.renderAll();
+        });
+    },
 
     init() {
-        State.subscribe(() => this.renderAll());
+        State.subscribe(() => this.scheduleRender());
         
         const seeAllBtn = document.querySelector('.see-all');
         if (seeAllBtn) {
@@ -227,7 +238,7 @@ export const UI = {
                                 <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
                             </button>
                         ` : '<div style="width: 26px;"></div>'}
-                        <button class="btn-icon" onclick="FormService.openAccountModal('${acc.id}')" title="Editar">
+                        <button class="btn-icon edit-acc-btn" data-id="${acc.id}" title="Editar">
                             <i class="fas fa-pencil-alt" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
                         </button>
                     </div>
@@ -243,6 +254,11 @@ export const UI = {
             settingsAccounts.querySelectorAll('.move-acc-down').forEach(btn => {
                 btn.onclick = () => {
                     State.moveAccount(btn.dataset.id, 'down');
+                };
+            });
+            settingsAccounts.querySelectorAll('.edit-acc-btn').forEach(btn => {
+                btn.onclick = () => {
+                    if (window.FormService) window.FormService.openAccountModal(btn.dataset.id);
                 };
             });
         }
@@ -275,7 +291,7 @@ export const UI = {
                                     <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
                                 </button>
                             ` : '<div style="width: 26px;"></div>'}
-                            <button class="btn-icon" onclick="FormService.openCategoryModal('${cat.id}')" title="Editar">
+                            <button class="btn-icon edit-cat-btn" data-id="${cat.id}" title="Editar">
                                 <i class="fas fa-pencil-alt" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
                             </button>
                         </div>
@@ -316,6 +332,11 @@ export const UI = {
             settingsCategories.querySelectorAll('.move-cat-down').forEach(btn => {
                 btn.onclick = () => {
                     State.moveCategory(btn.dataset.id, 'down');
+                };
+            });
+            settingsCategories.querySelectorAll('.edit-cat-btn').forEach(btn => {
+                btn.onclick = () => {
+                    if (window.FormService) window.FormService.openCategoryModal(btn.dataset.id);
                 };
             });
         }
@@ -563,7 +584,7 @@ export const UI = {
                     const percent = Math.min(100, Math.round((current / g.target) * 100)) || 0;
                     
                     return `
-                        <div class="saving-card" onclick="FormService.openGoalModal('${g.id}')">
+                        <div class="saving-card goal-card-trigger" data-id="${g.id}">
                             <div class="saving-header">
                                 <div style="display: flex; align-items: center; gap: 12px;">
                                     <div class="t-icon" style="background-color: var(--bg-secondary); color: var(--text-primary);">
@@ -574,7 +595,7 @@ export const UI = {
                                         <p>$${current.toLocaleString('es-ES')} / $${g.target.toLocaleString('es-ES')}</p>
                                     </div>
                                 </div>
-                                <button class="saving-progress-btn" onclick="event.stopPropagation(); ${g.account_id ? `FormService.openTransferModal(null, '${g.account_id}')` : `FormService.openFundGoalModal('${g.id}')`}">
+                                <button class="saving-progress-btn fund-goal-btn" data-id="${g.id}" data-account-id="${g.account_id || ''}">
                                     <i class="fas ${g.account_id ? 'fa-exchange-alt' : 'fa-plus'}"></i>
                                 </button>
                             </div>
@@ -590,6 +611,25 @@ export const UI = {
                         </div>
                     `;
                 }).join('');
+
+                // Adjuntar event listeners para metas en Home
+                homeList.querySelectorAll('.goal-card-trigger').forEach(card => {
+                    card.onclick = () => {
+                        if (window.FormService) window.FormService.openGoalModal(card.dataset.id);
+                    };
+                });
+                homeList.querySelectorAll('.fund-goal-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (!window.FormService) return;
+                        const accId = btn.dataset.accountId;
+                        if (accId) {
+                            window.FormService.openTransferModal(null, accId);
+                        } else {
+                            window.FormService.openFundGoalModal(btn.dataset.id);
+                        }
+                    };
+                });
             }
         }
 
@@ -615,7 +655,7 @@ export const UI = {
                                 <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
                             </button>
                         ` : '<div style="width: 26px;"></div>'}
-                        <button class="btn-icon" onclick="FormService.openGoalModal('${g.id}')" title="Editar">
+                        <button class="btn-icon edit-goal-btn" data-id="${g.id}" title="Editar">
                             <i class="fas fa-pencil-alt" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
                         </button>
                     </div>
@@ -631,6 +671,11 @@ export const UI = {
             settingsGoals.querySelectorAll('.move-goal-down').forEach(btn => {
                 btn.onclick = () => {
                     State.moveGoal(btn.dataset.id, 'down');
+                };
+            });
+            settingsGoals.querySelectorAll('.edit-goal-btn').forEach(btn => {
+                btn.onclick = () => {
+                    if (window.FormService) window.FormService.openGoalModal(btn.dataset.id);
                 };
             });
         }

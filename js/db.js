@@ -22,8 +22,15 @@ export class StorageService {
     static STORE_NAME = 'profiles_state';
     static STORAGE_KEY = 'finance_profiles_v2';
 
+    static _dbPromise = null;
+    static _saveTimer = null;
+    static _pendingState = null;
+
     static async openDB() {
-        return new Promise((resolve, reject) => {
+        if (this._dbPromise) return this._dbPromise;
+        if (typeof indexedDB === 'undefined') return Promise.reject(new Error('IndexedDB not supported'));
+
+        this._dbPromise = new Promise((resolve, reject) => {
             const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
             request.onupgradeneeded = (e) => {
                 const db = e.target.result;
@@ -31,9 +38,20 @@ export class StorageService {
                     db.createObjectStore(this.STORE_NAME);
                 }
             };
-            request.onsuccess = (e) => resolve(e.target.result);
-            request.onerror = (e) => reject(e.target.error);
+            request.onsuccess = (e) => {
+                const db = e.target.result;
+                db.onversionchange = () => {
+                    db.close();
+                    this._dbPromise = null;
+                };
+                resolve(db);
+            };
+            request.onerror = (e) => {
+                this._dbPromise = null;
+                reject(e.target.error);
+            };
         });
+        return this._dbPromise;
     }
 
     static async loadProfiles() {
@@ -42,9 +60,10 @@ export class StorageService {
             const db = await this.openDB();
             const tx = db.transaction(this.STORE_NAME, 'readonly');
             const store = tx.objectStore(this.STORE_NAME);
-            const data = await new Promise((res) => {
+            const data = await new Promise((res, rej) => {
                 const req = store.get('current_state');
                 req.onsuccess = () => res(req.result);
+                req.onerror = () => rej(req.error);
             });
 
             if (data) return data;
@@ -53,18 +72,43 @@ export class StorageService {
         }
 
         // 2. Fallback a localStorage (para migración o navegadores viejos)
-        const localData = localStorage.getItem(this.STORAGE_KEY);
+        const localData = typeof localStorage !== 'undefined' ? localStorage.getItem(this.STORAGE_KEY) : null;
         if (localData) {
-            const parsed = JSON.parse(localData);
-            await this.saveProfiles(parsed); // Migrar a IndexedDB
-            return parsed;
+            try {
+                const parsed = JSON.parse(localData);
+                await this.saveProfiles(parsed, true); // Migrar a IndexedDB inmediatamente
+                return parsed;
+            } catch (err) {
+                console.error("Error parseando localStorage:", err);
+            }
         }
 
         // 3. Si no hay nada, inicializar por defecto
         return this.initDefaultProfile();
     }
 
-    static async saveProfiles(state) {
+    static async saveProfiles(state, immediate = false) {
+        this._pendingState = state;
+
+        if (immediate) {
+            if (this._saveTimer) {
+                clearTimeout(this._saveTimer);
+                this._saveTimer = null;
+            }
+            return this._executeSave(state);
+        }
+
+        if (this._saveTimer) return;
+
+        this._saveTimer = setTimeout(() => {
+            this._saveTimer = null;
+            if (this._pendingState) {
+                this._executeSave(this._pendingState);
+            }
+        }, 150);
+    }
+
+    static async _executeSave(state) {
         // Guardar en IndexedDB
         try {
             const db = await this.openDB();
@@ -73,10 +117,18 @@ export class StorageService {
             store.put(state, 'current_state');
             
             // Mirror en localStorage por redundancia crítica
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+            }
         } catch (e) {
             console.error("Error guardando en IndexedDB:", e);
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+            if (typeof localStorage !== 'undefined') {
+                try {
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+                } catch (err) {
+                    console.error("Error guardando en localStorage:", err);
+                }
+            }
         }
     }
 
@@ -93,7 +145,7 @@ export class StorageService {
                 }
             ]
         };
-        this.saveProfiles(state);
+        this.saveProfiles(state, true);
         return state;
     }
 }

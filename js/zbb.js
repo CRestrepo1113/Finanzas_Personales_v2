@@ -20,6 +20,16 @@ export const ZBBService = {
             saveBtn.addEventListener('click', () => this.saveBudget());
         }
 
+        const listContainer = document.getElementById('zbb-categories-list');
+        if (listContainer && !listContainer.dataset.listenerAttached) {
+            listContainer.dataset.listenerAttached = 'true';
+            listContainer.addEventListener('input', (e) => {
+                if (e.target && e.target.classList.contains('zbb-input')) {
+                    this.calculateDelta();
+                }
+            });
+        }
+
         State.subscribe(() => this.renderCategories());
         this.renderCategories();
     },
@@ -53,8 +63,7 @@ export const ZBBService = {
                         data-subtype="${cat.subtype || 'fixed'}"
                         style="width: 100px; text-align: right; font-family: 'Inconsolata'; font-weight: bold; font-size: 1.05rem; padding: 6px; border-radius: 4px; border: 1.5px solid var(--text-primary);" 
                         value="${cat.budget || 0}" 
-                        placeholder="0"
-                        oninput="ZBBService.calculateDelta()">
+                        placeholder="0">
                 </div>
             </div>
         `;
@@ -81,8 +90,7 @@ export const ZBBService = {
                         data-subtype="future"
                         style="width: 100px; text-align: right; font-family: 'Inconsolata'; font-weight: bold; font-size: 1.05rem; padding: 6px; border-radius: 4px; border: 1.5px solid var(--text-primary);" 
                         value="${acc.budget || 0}" 
-                        placeholder="0"
-                        oninput="ZBBService.calculateDelta()">
+                        placeholder="0">
                 </div>
             </div>
         `;
