@@ -166,11 +166,11 @@ export const NotificationService = {
                             </span>
                         </div>
                     </div>
-                    <div class="up-status-amount" style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                    <div class="up-status-amount">
                         <span style="font-weight: 700; font-family: 'Inconsolata'; font-size: 1rem; color: var(--text-primary);">
                             $${p.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${escapeHTML(baseCurrency)}
                         </span>
-                        <div style="display: flex; align-items: center; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                             <span class="badge ${badgeClass}" style="font-size: 0.75rem; font-weight: bold;">
                                 ${statusText}
                             </span>

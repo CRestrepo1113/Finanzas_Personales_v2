@@ -2515,23 +2515,23 @@ export const Analytics = {
                     <div style="display: flex; flex-direction: column; gap: 10px;" id="debt-items-list">
                         ${debts.map((d, idx) => `
                             <div class="transaction-item" style="padding: 12px; background: var(--bg-primary); border: 2px solid var(--text-primary); border-radius: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                                <div style="flex: 1; min-width: 140px;">
+                                <div style="flex: 1 1 160px; min-width: 130px;">
                                     <input type="text" class="debt-name-input filter-select" data-idx="${idx}" value="${escapeHTML(d.name)}" style="width: 100%; font-weight: bold; padding: 6px;" placeholder="Nombre de la deuda">
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                    <div>
-                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block;">Saldo ($)</label>
-                                        <input type="number" class="debt-bal-input filter-select" data-idx="${idx}" value="${d.balance}" style="width: 100px; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
+                                <div style="display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; flex: 2 1 200px; justify-content: space-between;">
+                                    <div style="flex: 1 1 65px; min-width: 60px;">
+                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block; margin-bottom: 2px;">Saldo ($)</label>
+                                        <input type="number" class="debt-bal-input filter-select" data-idx="${idx}" value="${d.balance}" style="width: 100%; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
                                     </div>
-                                    <div>
-                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block;">APR (%)</label>
-                                        <input type="number" step="0.1" class="debt-apr-input filter-select" data-idx="${idx}" value="${d.apr}" style="width: 75px; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
+                                    <div style="flex: 1 1 55px; min-width: 50px;">
+                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block; margin-bottom: 2px;">APR (%)</label>
+                                        <input type="number" step="0.1" class="debt-apr-input filter-select" data-idx="${idx}" value="${d.apr}" style="width: 100%; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
                                     </div>
-                                    <div>
-                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block;">Pago Mín ($)</label>
-                                        <input type="number" class="debt-min-input filter-select" data-idx="${idx}" value="${d.minPayment}" style="width: 85px; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
+                                    <div style="flex: 1 1 65px; min-width: 60px;">
+                                        <label style="font-size: 0.72rem; font-weight: bold; color: var(--text-secondary); display: block; margin-bottom: 2px;">Pago Mín ($)</label>
+                                        <input type="number" class="debt-min-input filter-select" data-idx="${idx}" value="${d.minPayment}" style="width: 100%; text-align: right; padding: 6px; font-family: 'Inconsolata'; font-weight: bold;">
                                     </div>
-                                    <button type="button" class="btn-icon debt-del-btn" data-idx="${idx}" title="Eliminar deuda" style="margin-top: 14px; padding: 6px;">
+                                    <button type="button" class="btn-icon debt-del-btn" data-idx="${idx}" title="Eliminar deuda" style="padding: 6px 8px; margin-bottom: 2px;">
                                         <i class="fas fa-trash-alt" style="color: var(--action-expense);"></i>
                                     </button>
                                 </div>
@@ -2650,7 +2650,7 @@ export const Analytics = {
                 </div>
 
                 <!-- Entradas Generales -->
-                <div class="compare-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div class="compare-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
                     <div>
                         <label style="font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; display: block;">Monto de la Cuenta (Subtotal)</label>
                         <div style="display: flex; align-items: center; gap: 6px;">
@@ -2662,9 +2662,9 @@ export const Analytics = {
                     <div>
                         <label style="font-weight: bold; font-size: 0.9rem; margin-bottom: 5px; display: block;">Número de Personas</label>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" id="split-person-dec" class="btn btn-secondary" style="padding: 8px 14px; font-weight: bold; font-size: 1.1rem; border: 2px solid var(--text-primary);">-</button>
-                            <input type="number" id="split-num-people" class="filter-select" style="flex: 1; text-align: center; font-size: 1.15rem; font-weight: bold; font-family: 'Inconsolata'; padding: 8px;" value="${state.numPeople}" min="1">
-                            <button type="button" id="split-person-inc" class="btn btn-secondary" style="padding: 8px 14px; font-weight: bold; font-size: 1.1rem; border: 2px solid var(--text-primary);">+</button>
+                            <button type="button" id="split-person-dec" class="btn btn-secondary" style="padding: 8px 14px; font-weight: bold; font-size: 1.1rem; border: 2px solid var(--text-primary); cursor: pointer;">-</button>
+                            <input type="number" id="split-num-people" class="filter-select" style="flex: 1; min-width: 50px; text-align: center; font-size: 1.15rem; font-weight: bold; font-family: 'Inconsolata'; padding: 8px;" value="${state.numPeople}" min="1">
+                            <button type="button" id="split-person-inc" class="btn btn-secondary" style="padding: 8px 14px; font-weight: bold; font-size: 1.1rem; border: 2px solid var(--text-primary); cursor: pointer;">+</button>
                         </div>
                     </div>
                 </div>
@@ -2674,7 +2674,7 @@ export const Analytics = {
                     <label style="font-weight: bold; font-size: 0.9rem; margin-bottom: 8px; display: block;">Propina: ${state.tipPercent}% ($${tipAmount.toFixed(2)})</label>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         ${[0, 10, 15, 18, 20].map(tip => `
-                            <button type="button" class="btn split-tip-btn ${state.tipPercent === tip ? 'btn-save' : 'btn-secondary'}" data-tip="${tip}" style="padding: 8px 14px; font-size: 0.9rem; font-weight: bold; border: 2px solid var(--text-primary); border-radius: 6px; box-shadow: 1.5px 1.5px 0px var(--text-primary); cursor: pointer;">
+                            <button type="button" class="btn split-tip-btn ${state.tipPercent === tip ? 'btn-save' : 'btn-secondary'}" data-tip="${tip}" style="flex: 1 1 50px; min-width: 48px; padding: 8px 10px; font-size: 0.9rem; font-weight: bold; border: 2px solid var(--text-primary); border-radius: 6px; box-shadow: 1.5px 1.5px 0px var(--text-primary); cursor: pointer; text-align: center;">
                                 ${tip}%
                             </button>
                         `).join('')}
@@ -2700,17 +2700,17 @@ export const Analytics = {
                 <!-- Resultado por Persona -->
                 <div style="background: #FFF9E6; border: 2.5px solid var(--text-primary); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 20px; box-shadow: 3px 3px 0px var(--text-primary);">
                     <span style="font-size: 0.95rem; font-weight: bold; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Cada persona paga</span>
-                    <h2 style="margin: 8px 0; font-family: var(--font-heading); font-size: 2.3rem; font-weight: 900; color: var(--text-primary);">$${perPersonEqual.toFixed(2)} <span style="font-size: 1.1rem; font-family: var(--font-body);">${baseCurrency}</span></h2>
+                    <h2 style="margin: 8px 0; font-family: var(--font-heading); font-size: 2.3rem; font-weight: 900; color: var(--text-primary); word-break: break-word;">$${perPersonEqual.toFixed(2)} <span style="font-size: 1.1rem; font-family: var(--font-body);">${baseCurrency}</span></h2>
                     <span style="font-size: 0.85rem; color: var(--text-secondary);">División equitativa entre ${state.numPeople} persona(s)</span>
                 </div>
 
                 <!-- Acciones Rápidas -->
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <button type="button" id="split-copy-btn" class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 0.95rem; font-weight: bold; border: 2px solid var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 2px 2px 0px var(--text-primary);">
-                        <i class="fas fa-copy"></i> Copiar Desglose para WhatsApp
+                    <button type="button" id="split-copy-btn" class="btn btn-secondary" style="flex: 1 1 180px; min-width: 160px; padding: 12px; font-size: 0.95rem; font-weight: bold; border: 2px solid var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 2px 2px 0px var(--text-primary);">
+                        <i class="fas fa-copy"></i> Copiar para WhatsApp
                     </button>
-                    <button type="button" id="split-record-expense-btn" class="btn btn-save" style="flex: 1; padding: 12px; font-size: 0.95rem; font-weight: bold; border: 2px solid var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 2px 2px 0px var(--text-primary);">
-                        <i class="fas fa-arrow-up"></i> Registrar Mi Parte como Gasto
+                    <button type="button" id="split-record-expense-btn" class="btn btn-save" style="flex: 1 1 180px; min-width: 160px; padding: 12px; font-size: 0.95rem; font-weight: bold; border: 2px solid var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 2px 2px 0px var(--text-primary);">
+                        <i class="fas fa-arrow-up"></i> Registrar Mi Parte
                     </button>
                 </div>
             </div>
