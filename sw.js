@@ -1,5 +1,5 @@
 // Service Worker — Finanzas Personales PWA
-const CACHE_NAME = 'finanzas-v6.5';
+const CACHE_NAME = 'finanzas-v6.7';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',

@@ -54,12 +54,22 @@ class StateManager {
             });
         }
 
-        // Migración para añadir HNL a exchangeRates si no existe
-        if (this.db.settings && this.db.settings.exchangeRates) {
-            if (!this.db.settings.exchangeRates.hasOwnProperty('HNL')) {
-                this.db.settings.exchangeRates['HNL'] = 24.5;
-                migrated = true;
-            }
+        // Migración para asegurar tasas de cambio para HNL y CRC (Colones costarricenses)
+        if (this.profilesState && this.profilesState.profiles) {
+            this.profilesState.profiles.forEach(p => {
+                if (!p.db) return;
+
+                if (p.db.settings && p.db.settings.exchangeRates) {
+                    if (!p.db.settings.exchangeRates.hasOwnProperty('HNL')) {
+                        p.db.settings.exchangeRates['HNL'] = 24.5;
+                        migrated = true;
+                    }
+                    if (!p.db.settings.exchangeRates.hasOwnProperty('CRC')) {
+                        p.db.settings.exchangeRates['CRC'] = 515.0;
+                        migrated = true;
+                    }
+                }
+            });
         }
 
         if (migrated) {

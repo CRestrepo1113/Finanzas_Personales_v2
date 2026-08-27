@@ -501,7 +501,7 @@ export const UI = {
         if (!this.elements.exchangeRates) return;
         const { exchangeRates, baseCurrency } = State.db.settings;
 
-        const options = ['USD', 'EUR', 'COP', 'RUB', 'HNL'].map(curr => 
+        const options = ['USD', 'EUR', 'COP', 'RUB', 'HNL', 'CRC'].map(curr => 
             `<option value="${curr}" ${curr === baseCurrency ? 'selected' : ''}>${curr}</option>`
         ).join('');
 
