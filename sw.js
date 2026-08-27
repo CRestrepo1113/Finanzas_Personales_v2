@@ -1,5 +1,5 @@
 // Service Worker — Finanzas Personales PWA
-const CACHE_NAME = 'finanzas-v6.7';
+const CACHE_NAME = 'finanzas-v6.8';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -13,12 +13,18 @@ const ASSETS_TO_CACHE = [
     './js/analytics.js',
     './js/zbb.js',
     './js/import.js',
+    './js/calculator.js',
+    './js/drive.js',
+    './js/notifications.js',
+    './js/export.js',
     './icon.png',
     './app-icon.png',
     './manifest.json',
     'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inconsolata:wght@200..900&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
-    'https://cdn.jsdelivr.net/npm/chart.js'
+    'https://cdn.jsdelivr.net/npm/chart.js',
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://unpkg.com/docx@7.8.2/build/index.js'
 ];
 
 // Instalar: cachear archivos estáticos

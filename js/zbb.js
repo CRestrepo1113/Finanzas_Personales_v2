@@ -1,4 +1,5 @@
 import { State } from './state.js';
+import { escapeHTML } from './ui.js';
 
 export const ZBBService = {
     init() {
@@ -43,7 +44,7 @@ export const ZBBService = {
                     <div class="t-icon" style="background-color: ${cat.visual_color}; width: 34px; height: 34px; border: 1.5px solid var(--text-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.9rem;">
                         <i class="fa-solid ${cat.icon || 'fa-tag'}"></i>
                     </div>
-                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">${cat.name}</span>
+                    <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">${escapeHTML(cat.name)}</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 5px;">
                     <span style="font-family: var(--font-heading); font-weight: bold; color: var(--text-secondary);">$</span>
@@ -66,9 +67,9 @@ export const ZBBService = {
                         <i class="fa-solid ${acc.type === 'savings' ? 'fa-piggy-bank' : 'fa-hand-holding-dollar'}"></i>
                     </div>
                     <div style="display: flex; flex-direction: column;">
-                        <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">${acc.name}</span>
+                        <span style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">${escapeHTML(acc.name)}</span>
                         <span style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase;">
-                            ${acc.type === 'savings' ? 'Ahorro' : 'Deuda'} | Balance: $${acc.balance.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${acc.currency}
+                            ${acc.type === 'savings' ? 'Ahorro' : 'Deuda'} | Balance: $${acc.balance.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${escapeHTML(acc.currency)}
                         </span>
                     </div>
                 </div>

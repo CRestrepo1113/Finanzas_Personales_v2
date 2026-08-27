@@ -1,4 +1,5 @@
 import { State } from './state.js';
+import { escapeHTML } from './ui.js';
 
 export const NotificationService = {
     init() {
@@ -159,15 +160,15 @@ export const NotificationService = {
                             <i class="fa-solid ${catIcon}"></i>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 2px;">
-                            <span style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem;">${p.category.name}</span>
+                            <span style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem;">${escapeHTML(p.category.name)}</span>
                             <span style="font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
-                                <i class="fa-regular fa-calendar"></i> Día de pago: ${p.category.payment_day} de cada mes
+                                <i class="fa-regular fa-calendar"></i> Día de pago: ${escapeHTML(p.category.payment_day)} de cada mes
                             </span>
                         </div>
                     </div>
                     <div class="up-status-amount">
                         <span style="font-weight: 700; font-family: 'Inconsolata'; font-size: 1rem; color: var(--text-primary);">
-                            $${p.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${baseCurrency}
+                            $${p.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })} ${escapeHTML(baseCurrency)}
                         </span>
                         <span class="badge ${badgeClass}" style="font-size: 0.75rem; font-weight: bold;">
                             ${statusText}

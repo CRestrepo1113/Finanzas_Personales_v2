@@ -242,8 +242,10 @@ export const Analytics = {
         if (!container) return;
 
         // 1. Extraer y agrupar transacciones de gasto e ingreso por mes
-        const { transactions, categories } = State.db;
+        const { transactions, categories, accounts, settings } = State.db;
         const allTx = transactions || [];
+        const baseCurrency = settings?.baseCurrency || 'USD';
+        const rates = settings?.exchangeRates || {};
         
         const monthlyExpenses = {};
         const monthlyIncome = {};
@@ -251,22 +253,27 @@ export const Analytics = {
 
         allTx.forEach(t => {
             if (t.category_id === 'transfer' || t.type === 'transfer') return;
-            const d = new Date(t.date);
-            if (isNaN(d.getTime())) return;
+            const comp = getLocalDateComponents(t.date);
+            if (!comp) return;
             
-            const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const monthKey = `${comp.year}-${String(comp.month + 1).padStart(2, '0')}`;
             
             const cat = categories.find(c => String(c.id) === String(t.category_id));
             const isExpense = t.type === 'expense' || (cat && cat.type === 'expense');
             const isIncome = t.type === 'income' || (cat && cat.type === 'income');
 
+            const acc = accounts.find(a => String(a.id) === String(t.account_id));
+            const currency = acc ? acc.currency : baseCurrency;
+            const rate = rates[currency] || 1;
+            const amountInBase = (parseFloat(t.amount) || 0) / rate;
+
             if (isExpense) {
-                monthlyExpenses[monthKey] = (monthlyExpenses[monthKey] || 0) + Number(t.amount);
+                monthlyExpenses[monthKey] = (monthlyExpenses[monthKey] || 0) + amountInBase;
                 
                 if (!categoryMonthly[t.category_id]) categoryMonthly[t.category_id] = {};
-                categoryMonthly[t.category_id][monthKey] = (categoryMonthly[t.category_id][monthKey] || 0) + Number(t.amount);
+                categoryMonthly[t.category_id][monthKey] = (categoryMonthly[t.category_id][monthKey] || 0) + amountInBase;
             } else if (isIncome) {
-                monthlyIncome[monthKey] = (monthlyIncome[monthKey] || 0) + Number(t.amount);
+                monthlyIncome[monthKey] = (monthlyIncome[monthKey] || 0) + amountInBase;
             }
         });
 
@@ -505,8 +512,10 @@ export const Analytics = {
         prevYearEndDate.setFullYear(prevYearEndDate.getFullYear() - 1);
 
         // 2. Filtrar transacciones para cada periodo
-        const { transactions } = State.db;
+        const { transactions, categories, accounts, settings } = State.db;
         const allTx = transactions || [];
+        const baseCurrency = settings?.baseCurrency || 'USD';
+        const rates = settings?.exchangeRates || {};
 
         const getPeriodMetrics = (pStart, pEnd) => {
             const start = standardizeDate(pStart);
@@ -517,12 +526,21 @@ export const Analytics = {
 
             allTx.forEach(t => {
                 if (t.type === 'transfer' || t.category_id === 'transfer') return;
-                const tDate = standardizeDate(new Date(t.date));
+                const tDate = standardizeDate(t.date);
                 if (tDate >= start && tDate <= end) {
-                    if (t.type === 'income') {
-                        income += Number(t.amount);
-                    } else if (t.type === 'expense') {
-                        expenses += Number(t.amount);
+                    const cat = categories.find(c => String(c.id) === String(t.category_id));
+                    const isIncome = t.type === 'income' || (cat && cat.type === 'income');
+                    const isExpense = t.type === 'expense' || (cat && cat.type === 'expense');
+
+                    const acc = accounts.find(a => String(a.id) === String(t.account_id));
+                    const currency = acc ? acc.currency : baseCurrency;
+                    const rate = rates[currency] || 1;
+                    const amountInBase = (parseFloat(t.amount) || 0) / rate;
+
+                    if (isIncome) {
+                        income += amountInBase;
+                    } else if (isExpense) {
+                        expenses += amountInBase;
                     }
                 }
             });
@@ -1493,12 +1511,20 @@ export const Analytics = {
             tempD.setDate(tempD.getDate() + 1);
         }
 
-        // 2. Calcular el patrimonio neto actual real (a fecha de hoy)
-        let currentNW = 0;
+        // 2. Calcular el patrimonio neto actual real (a fecha de hoy) de forma consistente con UI.renderNetWorth
+        let assets = 0;
+        let liabilities = 0;
         accounts.forEach(acc => {
             const rate = rates[acc.currency] || 1;
-            currentNW += acc.balance / rate;
+            const safeRate = (rate && rate > 0) ? rate : 1;
+            const balanceInBase = (acc.balance || 0) / safeRate;
+            if (acc.type === 'debt' || acc.type === 'liability') {
+                liabilities += Math.abs(balanceInBase);
+            } else {
+                assets += balanceInBase;
+            }
         });
+        let currentNW = assets - liabilities;
 
         // 3. Crear un mapa para guardar el patrimonio al CIERRE de cada fecha en el rango
         const dailyNWMap = {};
@@ -1537,35 +1563,36 @@ export const Analytics = {
             
             // Revertir el efecto de la transacción sobre currentNW
             if (tx.type === 'transfer') {
-                let fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
-                if (!fromAcc && tx.from_profile_id && State.profilesState && State.profilesState.profiles) {
-                    const sourceProfile = State.profilesState.profiles.find(p => String(p.id) === String(tx.from_profile_id));
-                    if (sourceProfile) {
-                        fromAcc = sourceProfile.db.accounts.find(a => String(a.id) === String(tx.from_account_id));
-                    }
+                if (tx.to_profile_id) {
+                    // Salida a otro perfil: este perfil perdió extractedInBase
+                    const fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
+                    const rateFrom = fromAcc ? (rates[fromAcc.currency] || 1) : 1;
+                    const extractedInBase = (parseFloat(tx.amount_extracted) || 0) / rateFrom;
+                    currentNW += extractedInBase;
+                } else if (tx.from_profile_id) {
+                    // Entrada desde otro perfil: este perfil recibió receivedInBase
+                    const toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                    const rateTo = toAcc ? (rates[toAcc.currency] || 1) : 1;
+                    const receivedInBase = (parseFloat(tx.amount_received) || 0) / rateTo;
+                    currentNW -= receivedInBase;
+                } else {
+                    // Transferencia local interna
+                    const fromAcc = accounts.find(a => String(a.id) === String(tx.from_account_id));
+                    const toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
+                    const rateFrom = fromAcc ? (rates[fromAcc.currency] || 1) : 1;
+                    const rateTo = toAcc ? (rates[toAcc.currency] || 1) : 1;
+                    
+                    const extractedInBase = (parseFloat(tx.amount_extracted) || 0) / rateFrom;
+                    const receivedInBase = (parseFloat(tx.amount_received) || 0) / rateTo;
+                    
+                    currentNW = currentNW + extractedInBase - receivedInBase;
                 }
-
-                let toAcc = accounts.find(a => String(a.id) === String(tx.to_account_id));
-                if (!toAcc && tx.to_profile_id && State.profilesState && State.profilesState.profiles) {
-                    const targetProfile = State.profilesState.profiles.find(p => String(p.id) === String(tx.to_profile_id));
-                    if (targetProfile) {
-                        toAcc = targetProfile.db.accounts.find(a => String(a.id) === String(tx.to_account_id));
-                    }
-                }
-                
-                const rateFrom = fromAcc ? (rates[fromAcc.currency] || 1) : 1;
-                const rateTo = toAcc ? (rates[toAcc.currency] || 1) : 1;
-                
-                const extractedInBase = parseFloat(tx.amount_extracted || 0) / rateFrom;
-                const receivedInBase = parseFloat(tx.amount_received || 0) / rateTo;
-                
-                currentNW = currentNW + extractedInBase - receivedInBase;
             } else {
                 const cat = categories.find(c => String(c.id) === String(tx.category_id));
                 const acc = accounts.find(a => String(a.id) === String(tx.account_id));
                 const currency = acc ? acc.currency : baseCurrency;
                 const rate = rates[currency] || 1;
-                const amountInBase = parseFloat(tx.amount || 0) / rate;
+                const amountInBase = (parseFloat(tx.amount) || 0) / rate;
                 
                 if (cat) {
                     if (cat.type === 'income') {

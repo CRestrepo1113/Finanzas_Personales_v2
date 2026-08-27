@@ -246,37 +246,48 @@ export const ImportService = {
 
         if (!confirm('⚠️ COPIA DE SEGURIDAD LOCAL: ¿Deseas exportar una copia de seguridad consolidada de TODOS tus perfiles financieros en un archivo CSV?')) return;
 
+        // Función de sanitización para prevenir Inyección de Fórmulas CSV
+        const sanitizeCSVField = (val) => {
+            if (val === null || val === undefined) return '';
+            let str = String(val);
+            if (/^[=+\-@\t\r]/.test(str)) {
+                str = "'" + str;
+            }
+            return str.replace(/"/g, '""');
+        };
+
         let csvContent = "";
         
         State.profilesState.profiles.forEach(p => {
-            csvContent += `@@@ PROFILE_START | ${p.id} | ${p.name} @@@\n\n`;
+            csvContent += `@@@ PROFILE_START | ${p.id} | ${sanitizeCSVField(p.name)} | ${p.color || '#8C9970'} | ${p.icon || 'fa-user'} @@@\n\n`;
             
             csvContent += "### AJUSTES_SISTEMA ###\nBaseCurrency,ExchangeRates\n";
             csvContent += `${p.db.settings.baseCurrency},"${JSON.stringify(p.db.settings.exchangeRates).replace(/"/g, '""')}"\n\n`;
 
             csvContent += "### BLOQUE_CUENTAS ###\nid,name,currency,balance,type,color,budget\n";
             p.db.accounts.forEach(a => { 
-                csvContent += `${a.id},"${a.name}",${a.currency},${a.balance},${a.type},${a.color || ''},${a.budget || 0}\n`; 
+                csvContent += `${a.id},"${sanitizeCSVField(a.name)}",${a.currency},${a.balance},${a.type},${a.color || ''},${a.budget || 0}\n`; 
             });
             csvContent += "\n";
 
-            csvContent += "### BLOQUE_CATEGORIAS ###\nid,name,type,budget,visual_color,icon,subtype\n";
+            csvContent += "### BLOQUE_CATEGORIAS ###\nid,name,type,budget,visual_color,icon,subtype,payment_day\n";
             p.db.categories.forEach(c => { 
-                csvContent += `${c.id},"${c.name}",${c.type},${c.budget},${c.visual_color},${c.icon},${c.subtype || 'variable'}\n`; 
+                csvContent += `${c.id},"${sanitizeCSVField(c.name)}",${c.type},${c.budget},${c.visual_color},${c.icon},${c.subtype || 'variable'},${c.payment_day || ''}\n`; 
             });
             csvContent += "\n";
 
             csvContent += "### BLOQUE_METAS ###\nid,name,target,current,icon,account_id,is_emergency\n";
             p.db.goals.forEach(g => { 
-                csvContent += `${g.id},"${g.name}",${g.target},${g.current || 0},${g.icon},${g.account_id || ''},${g.is_emergency ? 'true' : 'false'}\n`; 
+                csvContent += `${g.id},"${sanitizeCSVField(g.name)}",${g.target},${g.current || 0},${g.icon},${g.account_id || ''},${g.is_emergency ? 'true' : 'false'}\n`; 
             });
             csvContent += "\n";
 
-            csvContent += "### BLOQUE_TRANSACCIONES ###\nid,type,date,amount,amount_extracted,amount_received,from_account_id,to_account_id,category_id,account_id,notes,foreign_account_name,is_cross_profile,cross_link_id,target_profile_id\n";
+            csvContent += "### BLOQUE_TRANSACCIONES ###\nid,type,date,amount,amount_extracted,amount_received,from_account_id,to_account_id,category_id,account_id,notes,foreign_account_name,is_cross_profile,cross_link_id,target_profile_id,fee,exchange_rate,user_notes\n";
             p.db.transactions.forEach(tx => {
-                let notes = (tx.notes || '').replace(/"/g, '""');
-                let fAccName = (tx.foreign_account_name || '').replace(/"/g, '""');
-                csvContent += `${tx.id},${tx.type},${tx.date},${tx.amount || 0},${tx.amount_extracted || 0},${tx.amount_received || 0},${tx.from_account_id || ''},${tx.to_account_id || ''},${tx.category_id || ''},${tx.account_id || ''},"${notes}","${fAccName}",${tx.is_cross_profile ? 'true' : 'false'},${tx.cross_link_id || ''},${tx.target_profile_id || ''}\n`;
+                let notes = sanitizeCSVField(tx.notes || '');
+                let fAccName = sanitizeCSVField(tx.foreign_account_name || '');
+                let userNotes = sanitizeCSVField(tx.user_notes || '');
+                csvContent += `${tx.id},${tx.type},${tx.date},${tx.amount || 0},${tx.amount_extracted || 0},${tx.amount_received || 0},${tx.from_account_id || ''},${tx.to_account_id || ''},${tx.category_id || ''},${tx.account_id || ''},"${notes}","${fAccName}",${tx.is_cross_profile ? 'true' : 'false'},${tx.cross_link_id || ''},${tx.target_profile_id || ''},${tx.fee || 0},${tx.exchange_rate || 1},"${userNotes}"\n`;
             });
             csvContent += "\n";
         });
@@ -304,6 +315,13 @@ export const ImportService = {
             return;
         }
 
+        const desanitizeCSVField = (val) => {
+            if (typeof val === 'string' && /^'[=+\-@\t\r]/.test(val)) {
+                return val.substring(1);
+            }
+            return val;
+        };
+
         const lines = text.split('\n').map(l => l.trim());
         let mode = '';
         let profiles = [];
@@ -329,9 +347,9 @@ export const ImportService = {
                 const parts = line.split('|').map(s => s.trim());
                 currentProfile = {
                     id: parts[1],
-                    name: parts[2].replace('@@@', '').trim(),
-                    color: '#8C9970',
-                    icon: 'fa-user',
+                    name: desanitizeCSVField(parts[2].replace('@@@', '').trim()),
+                    color: parts[3] ? parts[3].replace('@@@', '').trim() : '#8C9970',
+                    icon: parts[4] ? parts[4].replace('@@@', '').trim() : 'fa-user',
                     db: { settings: {}, accounts: [], categories: [], goals: [], transactions: [] }
                 };
                 profiles.push(currentProfile);
@@ -363,7 +381,7 @@ export const ImportService = {
                 case '### BLOQUE_CUENTAS ###':
                     if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_CUENTAS ###' && cols[0] !== '') {
                         db.accounts.push({
-                            id: parseId(cols[0]), name: cols[1], currency: cols[2],
+                            id: parseId(cols[0]), name: desanitizeCSVField(cols[1]), currency: cols[2],
                             balance: Math.round(parseVal(cols[3]) * 100) / 100, type: cols[4], color: cols[5] || '',
                             budget: cols[6] !== undefined ? parseVal(cols[6]) : 0
                         });
@@ -372,9 +390,10 @@ export const ImportService = {
                 case '### BLOQUE_CATEGORIAS ###':
                     if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_CATEGORIAS ###' && cols[0] !== '') {
                         db.categories.push({
-                            id: parseId(cols[0]), name: cols[1], type: cols[2],
+                            id: parseId(cols[0]), name: desanitizeCSVField(cols[1]), type: cols[2],
                             budget: parseVal(cols[3]), visual_color: cols[4],
-                            icon: cols[5], subtype: cols[6] || 'variable'
+                            icon: cols[5], subtype: cols[6] || 'variable',
+                            payment_day: cols[7] ? parseInt(cols[7], 10) : null
                         });
                     }
                     break;
@@ -382,7 +401,7 @@ export const ImportService = {
                     if (cols[0] !== 'id' && cols[0] !== '### BLOQUE_METAS ###' && cols[0] !== '') {
                         db.goals.push({
                             id: parseId(cols[0]), 
-                            name: cols[1], 
+                            name: desanitizeCSVField(cols[1]), 
                             target: parseVal(cols[2]),
                             current: parseVal(cols[3]), 
                             icon: cols[4],
@@ -407,11 +426,14 @@ export const ImportService = {
                                 to_account_id: parseId(cols[7]),
                                 category_id: parseId(cols[8]), 
                                 account_id: parseId(cols[9]), 
-                                notes: cols[10] || '',
-                                foreign_account_name: cols[11] || '',
+                                notes: desanitizeCSVField(cols[10] || ''),
+                                foreign_account_name: desanitizeCSVField(cols[11] || ''),
                                 is_cross_profile: cols[12] === 'true',
                                 cross_link_id: cols[13] || null,
-                                target_profile_id: cols[14] || null
+                                target_profile_id: cols[14] || null,
+                                fee: cols[15] !== undefined ? parseVal(cols[15]) : 0,
+                                exchange_rate: cols[16] !== undefined ? parseVal(cols[16]) : 1,
+                                user_notes: desanitizeCSVField(cols[17] || '')
                             });
                         }
                     }

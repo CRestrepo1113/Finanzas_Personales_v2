@@ -1,5 +1,5 @@
 import { State } from './state.js';
-import { UI } from './ui.js';
+import { UI, escapeHTML } from './ui.js';
 import { CalculatorService } from './calculator.js';
 
 
@@ -265,8 +265,8 @@ export const FormService = {
         if (submitBtn) submitBtn.textContent = 'Guardar';
 
         document.getElementById('tx-id').value = '';
-        accSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
-        catSelect.innerHTML = State.db.categories.filter(c => c.type === type).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        accSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
+        catSelect.innerHTML = State.db.categories.filter(c => c.type === type).map(c => `<option value="${c.id}">${escapeHTML(c.name)}</option>`).join('');
         document.getElementById('tx-date').value = this.getLocalDateString();
         document.getElementById('tx-amount').value = '';
         document.getElementById('tx-notes').value = '';
@@ -308,8 +308,8 @@ export const FormService = {
             
             const rateLabel = document.getElementById('trans-rate-label');
             const receivedLabel = document.getElementById('trans-amount-received-label');
-            if (rateLabel) rateLabel.textContent = `Tasa (${fromAccount.currency} ➜ ${toAccount.currency})`;
-            if (receivedLabel) receivedLabel.textContent = `Monto recibido (${toAccount.currency})`;
+            if (rateLabel) rateLabel.textContent = `Tasa (${escapeHTML(fromAccount.currency)} ➜ ${escapeHTML(toAccount.currency)})`;
+            if (receivedLabel) receivedLabel.textContent = `Monto recibido (${escapeHTML(toAccount.currency)})`;
 
             const rates = State.db.settings.exchangeRates || {};
             const rateFrom = rates[fromAccount.currency] || 1;
@@ -347,18 +347,18 @@ export const FormService = {
         document.getElementById('trans-id').value = '';
         
         // Generar selectores de origen (solo locales)
-        fromSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+        fromSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
 
         // Generar selectores de destino (locales + otros perfiles)
-        let toOptionsHtml = `<optgroup label="Este Perfil (${State.activeProfile.name})">`;
-        toOptionsHtml += State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+        let toOptionsHtml = `<optgroup label="Este Perfil (${escapeHTML(State.activeProfile.name)})">`;
+        toOptionsHtml += State.db.accounts.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
         toOptionsHtml += `</optgroup>`;
 
         if (State.profilesState && State.profilesState.profiles) {
             State.profilesState.profiles.forEach(p => {
                 if (String(p.id) !== String(State.profilesState.activeProfileId)) {
-                    toOptionsHtml += `<optgroup label="Perfil: ${p.name}">`;
-                    toOptionsHtml += p.db.accounts.map(a => `<option value="${p.id}:${a.id}">${a.name} (${a.currency})</option>`).join('');
+                    toOptionsHtml += `<optgroup label="Perfil: ${escapeHTML(p.name)}">`;
+                    toOptionsHtml += p.db.accounts.map(a => `<option value="${p.id}:${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
                     toOptionsHtml += `</optgroup>`;
                 }
             });
@@ -410,17 +410,17 @@ export const FormService = {
             if (deleteBtn) deleteBtn.classList.remove('hidden');
             if (submitBtn) submitBtn.textContent = 'Guardar';
 
-            fromSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+            fromSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
 
-            let toOptionsHtml = `<optgroup label="Este Perfil (${State.activeProfile.name})">`;
-            toOptionsHtml += State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
+            let toOptionsHtml = `<optgroup label="Este Perfil (${escapeHTML(State.activeProfile.name)})">`;
+            toOptionsHtml += State.db.accounts.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
             toOptionsHtml += `</optgroup>`;
 
             if (State.profilesState && State.profilesState.profiles) {
                 State.profilesState.profiles.forEach(p => {
                     if (String(p.id) !== String(State.profilesState.activeProfileId)) {
-                        toOptionsHtml += `<optgroup label="Perfil: ${p.name}">`;
-                        toOptionsHtml += p.db.accounts.map(a => `<option value="${p.id}:${a.id}">${a.name} (${a.currency})</option>`).join('');
+                        toOptionsHtml += `<optgroup label="Perfil: ${escapeHTML(p.name)}">`;
+                        toOptionsHtml += p.db.accounts.map(a => `<option value="${p.id}:${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
                         toOptionsHtml += `</optgroup>`;
                     }
                 });
@@ -481,8 +481,8 @@ export const FormService = {
             if (deleteBtn) deleteBtn.classList.remove('hidden');
             if (submitBtn) submitBtn.textContent = 'Guardar';
 
-            accSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('');
-            catSelect.innerHTML = State.db.categories.filter(c => c.type === cat.type).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            accSelect.innerHTML = State.db.accounts.map(a => `<option value="${a.id}">${escapeHTML(a.name)} (${escapeHTML(a.currency)})</option>`).join('');
+            catSelect.innerHTML = State.db.categories.filter(c => c.type === cat.type).map(c => `<option value="${c.id}">${escapeHTML(c.name)}</option>`).join('');
 
             document.getElementById('tx-id').value = tx.id;
             document.getElementById('tx-date').value = tx.date;
@@ -623,7 +623,7 @@ export const FormService = {
         let selectedIcon = 'fa-bullseye'; // Icono por defecto
 
         accSelect.innerHTML = '<option value="">Ninguna (Fondo Independiente)</option>' + 
-            State.db.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+            State.db.accounts.map(a => `<option value="${a.id}">${escapeHTML(a.name)}</option>`).join('');
 
         if (id) {
             const goal = State.db.goals.find(g => String(g.id) === String(id));

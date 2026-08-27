@@ -1,5 +1,16 @@
 import { State } from './state.js';
 
+export function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[tag] || tag));
+}
+
 export function getLocalDateComponents(dateStr) {
     if (!dateStr) return null;
     const onlyDate = String(dateStr).split(/[T ]/)[0]; 
@@ -136,7 +147,7 @@ export const UI = {
         if (greeting && State.activeProfile) {
             greeting.innerHTML = `
                 <i class="fas ${State.activeProfile.icon}" style="color: ${State.activeProfile.color}; margin-right: 8px;"></i>
-                ${State.activeProfile.name} 
+                ${escapeHTML(State.activeProfile.name)} 
                 <i class="fas fa-caret-down" style="font-size: 0.8rem; margin-left: 5px; opacity: 0.7;"></i>
             `;
         }
@@ -159,7 +170,7 @@ export const UI = {
         const netWorth = assets - liabilities;
         
         if (this.elements.totalNetWorth) {
-            this.elements.totalNetWorth.innerHTML = `${netWorth.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style="font-size: 0.55em; font-weight: 500; opacity: 0.75; margin-left: 5px; vertical-align: middle;">${baseCurrency}</span>`;
+            this.elements.totalNetWorth.innerHTML = `${netWorth.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style="font-size: 0.55em; font-weight: 500; opacity: 0.75; margin-left: 5px; vertical-align: middle;">${escapeHTML(baseCurrency)}</span>`;
         }
         if (this.elements.totalAssets) {
             this.elements.totalAssets.textContent = assets.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -179,8 +190,8 @@ export const UI = {
                     <div class="account-card ${isDark ? 'is-dark' : ''} account-card-trigger" data-id="${acc.id}" style="background: ${acc.color || 'var(--accent-gold)'}; cursor: pointer;">
                         <div class="ac-bg-lines"><i class="fa-solid fa-wallet"></i></div>
                         <div class="acc-info">
-                            <span class="acc-name">${acc.name}</span>
-                            <span class="acc-currency">${acc.currency}</span>
+                            <span class="acc-name">${escapeHTML(acc.name)}</span>
+                            <span class="acc-currency">${escapeHTML(acc.currency)}</span>
                         </div>
                         <div class="acc-balance">$${acc.balance.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
                     </div>
@@ -203,7 +214,7 @@ export const UI = {
                 <div class="setting-row" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.05);">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <div style="width: 12px; height: 12px; border-radius: 50%; background: ${acc.color}"></div>
-                        <span><strong>${acc.name}</strong> (${acc.currency})</span>
+                        <span><strong>${escapeHTML(acc.name)}</strong> (${escapeHTML(acc.currency)})</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 5px;">
                         ${index > 0 ? `
@@ -251,7 +262,7 @@ export const UI = {
                             <div class="t-icon" style="background-color: ${cat.visual_color}; width: 25px; height: 25px; font-size: 0.7rem;">
                                 <i class="fa-solid ${cat.icon.startsWith('fa-') ? cat.icon : 'fa-' + cat.icon}"></i>
                             </div>
-                            <span><strong>${cat.name}</strong></span>
+                            <span><strong>${escapeHTML(cat.name)}</strong></span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 5px;">
                             ${index > 0 ? `
@@ -431,17 +442,17 @@ export const UI = {
                                 <div class="t-text">
                                     <span class="t-name">Transferencia interna</span>
                                     <span class="t-date" style="display: flex; flex-direction: column; gap: 2px;">
-                                        <strong style="color: var(--text-primary); font-weight: 700;">${fromAcc.name} ➜ ${toAcc.name}</strong>
-                                        ${tx.notes && tx.notes !== 'Transferencia interna' ? `<span style="font-size:0.72rem; color:var(--text-secondary); font-weight: 500;"><i class="fa-solid fa-coins" style="margin-right:3px;"></i>${tx.notes}</span>` : ''}
-                                        ${parseFloat(tx.fee || 0) > 0 ? `<span style="font-size:0.72rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
-                                        ${tx.user_notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500; margin-top: 2px;">${tx.user_notes}</span>` : ''}
+                                        <strong style="color: var(--text-primary); font-weight: 700;">${escapeHTML(fromAcc.name)} ➜ ${escapeHTML(toAcc.name)}</strong>
+                                        ${tx.notes && tx.notes !== 'Transferencia interna' ? `<span style="font-size:0.72rem; color:var(--text-secondary); font-weight: 500;"><i class="fa-solid fa-coins" style="margin-right:3px;"></i>${escapeHTML(tx.notes)}</span>` : ''}
+                                        ${parseFloat(tx.fee || 0) > 0 ? `<span style="font-size:0.72rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${escapeHTML(fromAcc.currency)}</span>` : ''}
+                                        ${tx.user_notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500; margin-top: 2px;">${escapeHTML(tx.user_notes)}</span>` : ''}
                                     </span>
                                 </div>
                             </div>
                             <div style="text-align: right; line-height: 1.2; flex-shrink: 0; margin-left: 10px;">
-                                <span class="amount-expense" style="font-size: 0.95rem; font-weight: 700;">-${parseFloat(tx.amount_extracted || 0).toFixed(2)} ${fromAcc.currency}</span>
+                                <span class="amount-expense" style="font-size: 0.95rem; font-weight: 700;">-${parseFloat(tx.amount_extracted || 0).toFixed(2)} ${escapeHTML(fromAcc.currency)}</span>
                                 <br>
-                                <span class="amount-income" style="font-size: 0.85rem; font-weight: 700; opacity: 0.8;">+${parseFloat(tx.amount_received || 0).toFixed(2)} ${toAcc.currency}</span>
+                                <span class="amount-income" style="font-size: 0.85rem; font-weight: 700; opacity: 0.8;">+${parseFloat(tx.amount_received || 0).toFixed(2)} ${escapeHTML(toAcc.currency)}</span>
                             </div>
                         </div>
                     `;
@@ -462,10 +473,10 @@ export const UI = {
                                 <i class="fa-solid ${iconClass}"></i>
                             </div>
                             <div class="t-text">
-                                <span class="t-name">${cat.name}</span>
+                                <span class="t-name">${escapeHTML(cat.name)}</span>
                                 <span class="t-date" style="display: flex; flex-direction: column; gap: 2px;">
-                                    <strong style="color: var(--text-primary); font-weight: 700;">${acc.name}</strong>
-                                    ${tx.notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500;">${tx.notes}</span>` : ''}
+                                    <strong style="color: var(--text-primary); font-weight: 700;">${escapeHTML(acc.name)}</strong>
+                                    ${tx.notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500;">${escapeHTML(tx.notes)}</span>` : ''}
                                 </span>
                             </div>
                         </div>
@@ -559,7 +570,7 @@ export const UI = {
                                         <i class="fa-solid ${g.icon.startsWith('fa-') ? g.icon : 'fa-' + g.icon}"></i>
                                     </div>
                                     <div class="saving-info">
-                                        <h4>${g.name} ${g.account_id ? '<i class="fas fa-link" style="font-size: 0.6rem; opacity: 0.5;"></i>' : ''}</h4>
+                                        <h4>${escapeHTML(g.name)} ${g.account_id ? '<i class="fas fa-link" style="font-size: 0.6rem; opacity: 0.5;"></i>' : ''}</h4>
                                         <p>$${current.toLocaleString('es-ES')} / $${g.target.toLocaleString('es-ES')}</p>
                                     </div>
                                 </div>
@@ -591,7 +602,7 @@ export const UI = {
                         <div class="t-icon" style="background-color: var(--bg-secondary); width: 25px; height: 25px; font-size: 0.7rem;">
                             <i class="fa-solid ${g.icon.startsWith('fa-') ? g.icon : 'fa-' + g.icon}"></i>
                         </div>
-                        <span><strong>${g.name}</strong> <small style="opacity:0.6">$${g.target.toLocaleString('es-ES')}</small></span>
+                        <span><strong>${escapeHTML(g.name)}</strong> <small style="opacity:0.6">$${g.target.toLocaleString('es-ES')}</small></span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 5px;">
                         ${index > 0 ? `
@@ -640,7 +651,7 @@ export const UI = {
                             <i class="fas ${p.icon}"></i>
                         </div>
                         <div class="t-text" style="display: flex; flex-direction: column;">
-                            <span class="t-name" style="font-weight: 700; font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-primary);">${p.name}</span>
+                            <span class="t-name" style="font-weight: 700; font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-primary);">${escapeHTML(p.name)}</span>
                             <span class="t-date" style="font-size: 0.8rem; opacity: 0.8; color: var(--text-secondary);">${isActive ? '<strong>Perfil Activo</strong>' : 'Hacer clic para cambiar'}</span>
                         </div>
                     </div>
@@ -904,17 +915,17 @@ export const UI = {
                                 <div class="t-text">
                                     <span class="t-name">Transferencia interna</span>
                                     <span class="t-date" style="display: flex; flex-direction: column; gap: 2px;">
-                                        <strong style="color: var(--text-primary); font-weight: 700;">${fromAcc.name} ➜ ${toAcc.name}</strong>
-                                        ${tx.notes && tx.notes !== 'Transferencia interna' ? `<span style="font-size:0.72rem; color:var(--text-secondary); font-weight: 500;"><i class="fa-solid fa-coins" style="margin-right:3px;"></i>${tx.notes}</span>` : ''}
-                                        ${parseFloat(tx.fee || 0) > 0 && isOutgoing ? `<span style="font-size:0.72rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${fromAcc.currency}</span>` : ''}
-                                        ${tx.user_notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500; margin-top: 2px;">${tx.user_notes}</span>` : ''}
+                                        <strong style="color: var(--text-primary); font-weight: 700;">${escapeHTML(fromAcc.name)} ➜ ${escapeHTML(toAcc.name)}</strong>
+                                        ${tx.notes && tx.notes !== 'Transferencia interna' ? `<span style="font-size:0.72rem; color:var(--text-secondary); font-weight: 500;"><i class="fa-solid fa-coins" style="margin-right:3px;"></i>${escapeHTML(tx.notes)}</span>` : ''}
+                                        ${parseFloat(tx.fee || 0) > 0 && isOutgoing ? `<span style="font-size:0.72rem; color:#C1773A; font-style:italic;"><i class="fas fa-receipt" style="margin-right:3px;"></i>Comisión: ${parseFloat(tx.fee).toFixed(2)} ${escapeHTML(fromAcc.currency)}</span>` : ''}
+                                        ${tx.user_notes ? `<span class="t-notes" style="font-size: 0.75rem; color: var(--text-secondary); font-style: italic; font-weight: 500; margin-top: 2px;">${escapeHTML(tx.user_notes)}</span>` : ''}
                                     </span>
                                 </div>
                             </div>
                             <div style="text-align: right; line-height: 1.2; flex-shrink: 0; margin-left: 10px;">
                                 ${isOutgoing 
-                                    ? `<span class="amount-expense" style="font-size: 0.95rem; font-weight: 700;">-${parseFloat(tx.amount_extracted || 0).toFixed(2)} ${fromAcc.currency}</span>`
-                                    : `<span class="amount-income" style="font-size: 0.95rem; font-weight: 700;">+${parseFloat(tx.amount_received || 0).toFixed(2)} ${toAcc.currency}</span>`
+                                    ? `<span class="amount-expense" style="font-size: 0.95rem; font-weight: 700;">-${parseFloat(tx.amount_extracted || 0).toFixed(2)} ${escapeHTML(fromAcc.currency)}</span>`
+                                    : `<span class="amount-income" style="font-size: 0.95rem; font-weight: 700;">+${parseFloat(tx.amount_received || 0).toFixed(2)} ${escapeHTML(toAcc.currency)}</span>`
                                 }
                             </div>
                         </div>
@@ -935,8 +946,8 @@ export const UI = {
                                 <i class="fa-solid ${iconClass}"></i>
                             </div>
                             <div class="t-text">
-                                <span class="t-name">${cat.name}</span>
-                                <span class="t-date">${tx.notes ? tx.notes : 'Sin descripción'}</span>
+                                <span class="t-name">${escapeHTML(cat.name)}</span>
+                                <span class="t-date">${tx.notes ? escapeHTML(tx.notes) : 'Sin descripción'}</span>
                             </div>
                         </div>
                         <div class="t-amount ${amountClass}">${amountSign}$${parseFloat(tx.amount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
